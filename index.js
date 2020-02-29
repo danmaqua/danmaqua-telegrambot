@@ -130,7 +130,7 @@ livePool.on('danmaku', (room, data) => {
                 msg += ': ';
             }
             msg += data.text;
-            bot.telegram.sendMessage(rec.chatId, msg, {
+            bot.telegram.sendMessage(rec.chatId, msg.replace('-', '\\-'), {
                 parse_mode: 'MarkdownV2',
                 disable_web_page_preview: true,
                 disable_notification: true
