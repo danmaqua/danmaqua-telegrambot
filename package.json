@@ -1,0 +1,17 @@
+{
+  "name": "danmaqua-tgbot",
+  "version": "1.0.0",
+  "description": "Danmaqua Telegram Bot",
+  "main": "index.js",
+  "scripts": {
+    "bot": "node index.js"
+  },
+  "keywords": [],
+  "author": "fython",
+  "license": "GPLv3",
+  "dependencies": {
+    "bilibili-live-ws": "^4.0.0",
+    "https-proxy-agent": "^5.0.0",
+    "telegraf": "^3.36.0"
+  }
+}
