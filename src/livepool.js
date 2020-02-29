@@ -30,6 +30,9 @@ class LivePool extends EventEmitter {
             const danmaku = Danmaku.fromBilibiliMessage(data);
             this.emit('danmaku', room, danmaku);
         });
+        live.on('error', ( e) => {
+            this.emit('error', room, e);
+        });
         this.liveList[room] = new LiveEntity(live, 1);
     }
 

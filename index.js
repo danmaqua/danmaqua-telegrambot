@@ -114,7 +114,6 @@ bot.command('set_hide_username', async (ctx) => {
 });
 
 livePool.on('danmaku', (room, data) => {
-    console.log(`${room} : ${data}`);
     for (let key in entities.records) {
         if (!entities.records.hasOwnProperty(key)) {
             continue;
@@ -138,6 +137,9 @@ livePool.on('danmaku', (room, data) => {
             });
         }
     }
+});
+livePool.on('error', (room, e) => {
+    console.log('LivePool: onError ' + e);
 });
 
 bot.launch();
