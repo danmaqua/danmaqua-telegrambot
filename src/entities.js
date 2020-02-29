@@ -30,7 +30,11 @@ class Entities {
     }
 
     getRecord(chatId) {
-        return new RecordEntity(this._db_records().find({ chatId }).value());
+        const value = this._db_records().find({ chatId }).value();
+        if (value) {
+            return new RecordEntity(value);
+        }
+        return null;
     }
 
     setRecord(record) {
