@@ -144,3 +144,8 @@ bot.launch();
 console.log('Bot has been launched.');
 
 bot.telegram.getMe().then((user) => botUser = user);
+
+entities.records.forEach((record) => {
+    console.log(`Registered ${record.roomId} for ${record.chatId}.`);
+    livePool.registerRoom(record.roomId);
+});

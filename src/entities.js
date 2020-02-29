@@ -9,6 +9,8 @@ class Entities {
         this.records = [];
 
         db.defaults({ records: [], admins: [] }).write();
+
+        this.records = this._db_records().value().map((value) => new RecordEntity(value));
     }
 
     static fromMemory() {
