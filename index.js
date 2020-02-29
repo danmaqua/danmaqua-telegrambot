@@ -126,12 +126,13 @@ livePool.on('danmaku', (room, data) => {
         if (Config.pattern.test(data.text)) {
             let msg = '';
             if (!rec.hideUsername) {
-                msg += `[${data.sender.username}](https://space.bilibili.com/${data.sender.uid})`;
+                const url = 'https://space.bilibili.com/' + data.sender.uid;
+                msg += `<a href="${url}">${data.sender.username}</a>`;
                 msg += ': ';
             }
             msg += data.text;
-            bot.telegram.sendMessage(rec.chatId, msg.replace('-', '\\-'), {
-                parse_mode: 'MarkdownV2',
+            bot.telegram.sendMessage(rec.chatId, msg, {
+                parse_mode: 'HTML',
                 disable_web_page_preview: true,
                 disable_notification: true
             });
