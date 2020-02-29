@@ -1,5 +1,6 @@
 /.idea
 /.vscode
 /node_modules
+/data
 *.iml
 config.js

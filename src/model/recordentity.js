@@ -1,5 +1,5 @@
 class RecordEntity {
-    constructor(chatId, roomId, options) {
+    constructor({chatId, roomId, options}) {
         this.chatId = chatId;
         this.roomId = roomId;
         this.options = options || {};
@@ -13,8 +13,8 @@ class RecordEntity {
         this.options.hideUsername = value;
     }
 
-    get HideUsername() {
-        return this.options.hideUsername;
+    get hideUsername() {
+        return this.options.hideUsername || false;
     }
 
     static equals(one, other) {

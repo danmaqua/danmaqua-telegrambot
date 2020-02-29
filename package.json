@@ -8,10 +8,15 @@
   },
   "keywords": [],
   "author": "fython",
-  "license": "GPLv3",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/danmaqua/danmaqua-telegrambot.git"
+  },
+  "license": "GPL-3.0-only",
   "dependencies": {
     "bilibili-live-ws": "^4.0.0",
     "https-proxy-agent": "^5.0.0",
+    "lowdb": "^1.0.0",
     "telegraf": "^3.36.0"
   }
 }
