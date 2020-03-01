@@ -14,7 +14,7 @@
   },
   "license": "GPL-3.0-only",
   "dependencies": {
-    "bilibili-live-ws": "^4.0.0",
+    "bilibili-live-ws": "^4.0.1",
     "https-proxy-agent": "^5.0.0",
     "lowdb": "^1.0.0",
     "telegraf": "^3.36.0"
