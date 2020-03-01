@@ -45,7 +45,7 @@ class LivePool extends EventEmitter {
         if (entity.counter <= 0) {
             console.log(`Room ${room} is no longer used. Close now.`);
             entity.live.close();
-            delete this.liveList[entity];
+            delete this.liveList[room];
         }
     }
 }
