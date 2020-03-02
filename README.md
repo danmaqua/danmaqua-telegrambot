@@ -34,6 +34,10 @@ Danmaqua Telegram Bot
 
 使用 `/block_user [要屏蔽的用户 ID] [指定的群组/频道 ID]` 可以屏蔽/取消屏蔽来自于指定用户的弹幕，用户 ID 指 B 站空间中看到的 UID，要快速获取 ID，你可以在机器人转发出来的弹幕中，点击蓝色的用户链接，复制 URL 中的 ID 出来。
 
+使用 `/list_blocked_users [指定的群组/频道 ID]` 可以显示该聊天中已屏蔽的用户。
+
+为了方便操作，转发群组/频道中机器人的弹幕消息（不支持机器人与用户的私人消息）到与机器人的私人聊天，可以打开操作菜单，目前只提供了屏蔽用户选项。
+
 ## Contact author
 
 Telegram: [@fython](https://t.me/fython)

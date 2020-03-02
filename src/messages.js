@@ -1,8 +1,8 @@
 const Messages = {
     WELCOME_MSG: '欢迎使用 Danmaqua Bot 早期测试版本！\n' +
         '了解使用方法请输入 /help ，程序仍不稳定，数据设定可能会丢失，敬请理解。\n\n' +
-        '项目源码以 GPLv3 协议发布于 https://github\\.com/danmaqua/danmaqua\\-telegrambot\n' +
-        'Android App 版「悬浮字幕」体验更佳，请访问 https://danmaqua\\.github\\.io 获取。\n' +
+        '项目源码以 GPLv3 协议发布于 https://github.com/danmaqua/danmaqua-telegrambot\n' +
+        'Android App 版「悬浮字幕」体验更佳，请访问 https://danmaqua.github.io 获取。\n' +
         '特别感谢同传翻译大佬们的无私奉献为 VTB 观众提供中文字幕。',
 
     HELP_MSG: '目前只允许管理员使用，请联系当前 Bot 管理员获取权限，或自行搭建 Bot。\n' +
@@ -10,9 +10,11 @@ const Messages = {
         '`/subscribe [房间号] [目标聊天 ID（可选）]` ：订阅房间的同传弹幕并发送到目标聊天\n' +
         '`/unsubscribe [目标聊天 ID（可选）]` ：取消目标聊天的房间订阅\n' +
         '`/block_user [B 站用户 ID] [目标聊天 ID（可选）]` : 屏蔽/解除屏蔽特定用户的弹幕\n' +
+        '`/list_blocked_users [目标聊天 ID（可选）]` : 列出目标聊天中已屏蔽的用户\n' +
         '`/set_hide_username [目标聊天 ID（可选）]` ：开关目标聊天的同传弹幕用户名显示\n\n' +
-        '项目源码以 GPLv3 协议发布于 https://github\\.com/danmaqua/danmaqua\\-telegrambot\n' +
-        'Android App 版「悬浮字幕」体验更佳，请访问 https://danmaqua\\.github\\.io 获取。\n' +
+        '除了使用命令，你还可以通过转发弹幕消息到机器人打开便捷的操作菜单，进行屏蔽用户等操作。\n\n' +
+        '项目源码以 GPLv3 协议发布于 https://github.com/danmaqua/danmaqua-telegrambot\n' +
+        'Android App 版「悬浮字幕」体验更佳，请访问 https://danmaqua.github.io 获取。\n' +
         '特别感谢同传翻译大佬们的无私奉献为 VTB 观众提供中文字幕。',
 
     SPACE_LINK_HTML: (uid) => `<a href="https://space.bilibili.com/${uid}">${uid}</a>`,
