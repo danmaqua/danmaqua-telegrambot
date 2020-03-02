@@ -1,4 +1,4 @@
-module.exports = {
+const Messages = {
     WELCOME_MSG: '欢迎使用 Danmaqua Bot 早期测试版本！\n' +
         '了解使用方法请输入 /help ，程序仍不稳定，数据设定可能会丢失，敬请理解。\n\n' +
         '项目源码以 GPLv3 协议发布于 https://github\\.com/danmaqua/danmaqua\\-telegrambot\n' +
@@ -14,6 +14,8 @@ module.exports = {
         '项目源码以 GPLv3 协议发布于 https://github\\.com/danmaqua/danmaqua\\-telegrambot\n' +
         'Android App 版「悬浮字幕」体验更佳，请访问 https://danmaqua\\.github\\.io 获取。\n' +
         '特别感谢同传翻译大佬们的无私奉献为 VTB 观众提供中文字幕。',
+
+    SPACE_LINK_HTML: (uid) => `<a href="https://space.bilibili.com/${uid}">${uid}</a>`,
 
     NO_PERMISSION_MSG: '很抱歉，你无法设置这个机器人，请联系这个机器人的管理员进行添加权限。',
     CHAT_CANNOT_SEND_MSG: '你指定的目标不允许机器人发送消息，请检查机器人是否被禁言和是否未加入聊天。',
@@ -31,5 +33,17 @@ module.exports = {
         '显示发送弹幕的用户名。',
     BLOCKED_USER_UPDATED_MSG: (userId, blocked) => `用户 ${userId} 的弹幕已` +
         (blocked ? '加入' : '解除') +
-        `封禁。`
+        `封禁。`,
+    BLOCKED_USER_LIST_MSG: (chatId, users) => {
+        return `在 ${chatId} 已屏蔽的哔哩哔哩用户：` +
+            ((!users || users.length === 0) ? '无' : users.map(Messages.SPACE_LINK_HTML).join('；')) +
+            `。如遇误判，请向当前机器人的维护者进行反馈。`
+    },
+
+    DANMAKU_NO_SUBSCRIPTION_IN_CHAT_MSG: (chatId) => `你尚未在 ${chatId} 订阅任何房间，无法对这条弹幕进行操作。`,
+    DANMAKU_INVALID_MSG: '你转发的这条消息看起来不是由机器人发出的弹幕，或者你开启了隐藏用户名无法追踪要屏蔽的用户。',
+    DANMAKU_OP_MENU_MSG: '你要对这条弹幕进行什么操作？',
+    DANMAKU_OP_BLOCK_USER: (username) => `屏蔽用户：${username}`,
 };
+
+module.exports = Messages;
