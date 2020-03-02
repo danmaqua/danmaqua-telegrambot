@@ -13,8 +13,8 @@ module.exports = {
     botProxy: null,
     // Bilibili API 代理服务器
     biliProxy: null,
-    // 弹幕匹配规则
-    pattern: /(?<who>[^〈｛『〖［〔「【]*)[〈｛『〖［〔「【](?<text>[^〉｝『〗］〕」】]*)[$〉｝『〗］〕」】]?/,
+    // 默认弹幕匹配规则，运行时会被数据库中的设置覆盖
+    defaultPattern: /(?<who>[^〈｛『〖［〔「【]*)[〈｛『〖［〔「【](?<text>[^〉｝『〗］〕」】]*)[$〉｝『〗］〕」】]?/,
     // 默认管理员 ID 列表，空数组代表允许任何人使用 Bot 进行订阅
     defaultAdmins: [],
 };
