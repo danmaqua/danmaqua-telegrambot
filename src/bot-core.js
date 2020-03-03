@@ -86,6 +86,45 @@ class DanmaquaBot {
     };
 
     /**
+     * 保证目标对话可以设置转发并检查是否已有设置，如果有错误将同时发送警告
+     *
+     * @param ctx 消息上下文
+     * @param targetChatId 目标对话 ID 或 username
+     * @param requireRecordExist 是否要求记录已存在
+     * @returns {Promise<{targetChat: Chat, record: RecordEntity}|{}>} 目标对话和设置的对象
+     */
+    ensureSetRecordOfTargetChatOrWarn = async (ctx, targetChatId, requireRecordExist = false) => {
+        const targetChat = await this.getChat(targetChatId || ctx.chat.id);
+        const canSend = targetChat != null && await this.canSendMessageToChat(targetChat.id);
+        if (!canSend) {
+            ctx.reply(Messages.CHAT_CANNOT_SEND_MSG);
+            return {};
+        }
+
+        const record = this.entities.getRecord(targetChat.id);
+        if (requireRecordExist && record == null) {
+            ctx.reply(Messages.NEED_SUBSCRIBE_MSG(targetChat.id));
+            return {};
+        }
+
+        return { targetChat, record }
+    };
+
+    /**
+     * 获取对话信息
+     *
+     * @param chatId 对话 ID 或者 username
+     * @returns {Promise<Chat>}
+     */
+    getChat = async (chatId) => {
+        try {
+            return await this.bot.telegram.getChat(chatId);
+        } catch (e) {
+            return null;
+        }
+    };
+
+    /**
      * /start 开始命令回调
      *
      * @param ctx 消息上下文
@@ -119,14 +158,11 @@ class DanmaquaBot {
             ctx.reply(Messages.SUBSCRIBE_ROOM_INVALID_MSG);
             return;
         }
-        targetChatId = parseInt(targetChatId || ctx.chat.id);
-        const canSend = await this.canSendMessageToChat(targetChatId);
-        if (!canSend) {
-            ctx.reply(Messages.CHAT_CANNOT_SEND_MSG);
+        const { targetChat, record } = await this.ensureSetRecordOfTargetChatOrWarn(ctx, targetChatId);
+        if (!targetChat) {
             return;
         }
 
-        const record = this.entities.getRecord(targetChatId);
         if (record != null) {
             if (record.roomId === roomId) {
                 ctx.reply(Messages.SUBSCRIBE_DUPLICATED_MSG);
@@ -134,7 +170,7 @@ class DanmaquaBot {
             }
             this.livePool.unregisterRoom(record.roomId);
         }
-        this.entities.recordSubscribe(targetChatId, roomId);
+        this.entities.recordSubscribe(targetChat.id, roomId);
         this.livePool.registerRoom(roomId);
         ctx.reply(Messages.SUBSCRIBE_SUCCESS_MSG(roomId));
     };
@@ -145,21 +181,13 @@ class DanmaquaBot {
      * @param ctx 消息上下文
      */
     onCommandUnsubscribe = async (ctx) => {
-        let [_, targetChatId] = ctx.message.text.split(' ');
-        targetChatId = parseInt(targetChatId || ctx.chat.id);
-        const canSend = await this.canSendMessageToChat(targetChatId);
-        if (!canSend) {
-            ctx.reply(Messages.CHAT_CANNOT_SEND_MSG);
-            return;
-        }
-
-        const record = this.entities.getRecord(targetChatId);
-        if (record == null) {
-            ctx.reply(Messages.NEED_SUBSCRIBE_MSG(targetChatId));
+        const [_, targetChatId] = ctx.message.text.split(' ');
+        const { targetChat, record } = await this.ensureSetRecordOfTargetChatOrWarn(ctx, targetChatId, true);
+        if (!targetChat || !record) {
             return;
         }
         this.livePool.unregisterRoom(record.roomId);
-        this.entities.deleteRecord(targetChatId);
+        this.entities.deleteRecord(targetChat.id);
         ctx.reply(Messages.UNSUBSCRIBE_SUCCESS_MSG(record.roomId));
     };
 
@@ -169,22 +197,14 @@ class DanmaquaBot {
      * @param ctx 消息上下文
      */
     onCommandSetHideUsername = async (ctx) => {
-        let [_, targetChatId] = ctx.message.text.split(' ');
-        targetChatId = parseInt(targetChatId || ctx.chat.id);
-        const canSend = await this.canSendMessageToChat(targetChatId);
-        if (!canSend) {
-            ctx.reply(Messages.CHAT_CANNOT_SEND_MSG);
-            return;
-        }
-
-        const record = this.entities.getRecord(targetChatId);
-        if (record == null) {
-            ctx.reply(Messages.NEED_SUBSCRIBE_MSG(targetChatId));
+        const [_, targetChatId] = ctx.message.text.split(' ');
+        const { targetChat, record } = await this.ensureSetRecordOfTargetChatOrWarn(ctx, targetChatId, true);
+        if (!targetChat || !record) {
             return;
         }
         record.hideUsername = !record.hideUsername;
         this.entities.setRecord(record);
-        ctx.reply(Messages.HIDE_USERNAME_UPDATED_MSG(targetChatId, record.hideUsername));
+        ctx.reply(Messages.HIDE_USERNAME_UPDATED_MSG(targetChat.id, record.hideUsername));
     };
 
     /**
@@ -195,16 +215,8 @@ class DanmaquaBot {
     onCommandBlockUser = async (ctx) => {
         let [_, userId, targetChatId] = ctx.message.text.split(' ');
         userId = parseInt(userId);
-        targetChatId = parseInt(targetChatId || ctx.chat.id);
-        const canSend = await this.canSendMessageToChat(targetChatId);
-        if (!canSend) {
-            ctx.reply(Messages.CHAT_CANNOT_SEND_MSG);
-            return;
-        }
-
-        const record = this.entities.getRecord(targetChatId);
-        if (record == null) {
-            ctx.reply(Messages.NEED_SUBSCRIBE_MSG(targetChatId));
+        const { targetChat, record } = await this.ensureSetRecordOfTargetChatOrWarn(ctx, targetChatId, true);
+        if (!targetChat || !record) {
             return;
         }
         const isBlocked = record.isUserBlocked(userId);
@@ -313,21 +325,13 @@ class DanmaquaBot {
      * @param ctx 消息上下文
      */
     onCommandListBlockedUsers = async (ctx) => {
-        let [_, targetChatId] = ctx.message.text.split(' ');
-        targetChatId = parseInt(targetChatId || ctx.chat.id);
-        const canSend = await this.canSendMessageToChat(targetChatId);
-        if (!canSend) {
-            ctx.reply(Messages.CHAT_CANNOT_SEND_MSG);
-            return;
-        }
-
-        const record = this.entities.getRecord(targetChatId);
-        if (record == null) {
-            ctx.reply(Messages.NEED_SUBSCRIBE_MSG(targetChatId));
+        const [_, targetChatId] = ctx.message.text.split(' ');
+        const { targetChat, record } = await this.ensureSetRecordOfTargetChatOrWarn(ctx, targetChatId, true);
+        if (!targetChat || !record) {
             return;
         }
         ctx.reply(
-            Messages.BLOCKED_USER_LIST_MSG(targetChatId, record.options.blockedUsers),
+            Messages.BLOCKED_USER_LIST_MSG(targetChat.id, record.options.blockedUsers),
             Extra.HTML().webPreview(false)
         );
     };
@@ -338,20 +342,15 @@ class DanmaquaBot {
      * @param ctx 消息上下文
      */
     onCommandReconnect = async (ctx) => {
-        let [_, targetChatId] = ctx.message.text.split(' ');
+        const [_, targetChatId] = ctx.message.text.split(' ');
 
         if (targetChatId) {
-            targetChatId = parseInt(targetChatId);
-            const canSend = await this.canSendMessageToChat(targetChatId);
-            if (!canSend) {
-                ctx.reply(Messages.CHAT_CANNOT_SEND_MSG);
+            const { targetChat, record } = await this.ensureSetRecordOfTargetChatOrWarn(ctx, targetChatId, true);
+            if (!targetChat || !record) {
                 return;
             }
-            const record = this.entities.getRecord(targetChatId);
-            if (record) {
-                this.livePool.reconnect(record.roomId);
-                ctx.reply(Messages.RECONNECT_REQUESTED_MSG(targetChatId, record.roomId));
-            }
+            this.livePool.reconnect(record.roomId);
+            ctx.reply(Messages.RECONNECT_REQUESTED_MSG(targetChat.id, record.roomId));
         } else {
             const list = [];
             for (let record of this.entities.records) {
