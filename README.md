@@ -3,6 +3,8 @@ Danmaqua Telegram Bot
 
 将哔哩哔哩直播间的同传弹幕转发至 Telegram 聊天、频道以便阅读/存档。
 
+**版本 2.x 已经做了大量的改动，目前文档尚未完成编辑，API 设计也尚未稳定，如有疑问请直接联系作者咨询。**
+
 ## How to use
 
 ### 直接订阅已有的同传弹幕记录频道
@@ -16,27 +18,30 @@ Danmaqua Telegram Bot
 使用前请保证你的运行环境有 Node.js 12+，并在 Telegram `@BotFather` 申请你自己的机器人。
 
 1. 使用 Git Clone 项目到本地
-2. 复制一份 `config.sample.js` 并改名为 `config.js` ，按照文件内注释配置好数据库路径、机器人 Token、管理员等
-3. 执行 `npm i` 安装必要的依赖
-4. 执行 `npm run bot` 启动机器人
+2. 执行 `npm i` 安装必要的依赖
+3. 打开 `dmsrc.config.js` 配置文件，按照文件内注释配置好弹幕源服务器
+4. 执行 `npm run dmsrc:bilibili` 启动 Bilibili 弹幕源，如果你还需要使用 Douyu 弹幕源，还可以执行 `npm run dmsrc:douyu`
+5. 打开 `bot.config.js` 配置文件，按照文件内注释配置好数据库路径、机器人 Token、管理员等
+6. 执行 `npm run bot` 启动机器人
 
-### 配置弹幕转发到群组或频道
+我们推荐使用 [PM2](https://pm2.keymetrics.io/) 来对你的服务进程进行管理，同时它也可以设置定期重启。
 
-同传翻译弹幕的辨别以 `config.js` 内的正则表达式为准，请根据自己的需求进行设定。
+以开启弹幕源服务进程和机器人本体进程为例，不包括定期重启参数：
 
-运行起来自己的实例之后，打开与机器人的 Telegram 聊天，首次使用需要点击 Start 开始对话。
-
-输入 `/subscribe [B 站房间号] [指定的群组/频道 ID]` ，B 站房间号即直播地址最后的一串 ID 而非用户 ID，指定的群组/频道 ID 为 Telegram 内部保存的一串纯数字 ID，你可能需要使用其它 ID 查询机器人来获取，如果你拥有 Android 手机，可以尝试安装 Nekogram 或其它可信任的第三方 Telegram 客户端，打开群组/频道资料页查看 ID。
-
-如果要取消订阅，输入 `/unsubscribe [指定的群组/频道 ID]` 即可，每个群组/频道只能订阅一个 B 站房间。
-
-使用 `/set_hide_username [指定的群组/频道 ID]` 可以开关隐藏弹幕发送用户名，但不推荐使用，将无法得知弹幕发送者，如果遇到无关翻译的弹幕将无法得知用户 ID 进行屏蔽，最重要的是同传大佬付出大量时间和精力为我们提供直播翻译，至少我们要能记住他们的名字。
-
-使用 `/block_user [要屏蔽的用户 ID] [指定的群组/频道 ID]` 可以屏蔽/取消屏蔽来自于指定用户的弹幕，用户 ID 指 B 站空间中看到的 UID，要快速获取 ID，你可以在机器人转发出来的弹幕中，点击蓝色的用户链接，复制 URL 中的 ID 出来。
-
-使用 `/list_blocked_users [指定的群组/频道 ID]` 可以显示该聊天中已屏蔽的用户。
-
-为了方便操作，转发群组/频道中机器人的弹幕消息（不支持机器人与用户的私人消息）到与机器人的私人聊天，可以打开操作菜单，目前只提供了屏蔽用户选项。
+```bash
+# 安装 PM2
+npm i -g pm2
+# 同时启动弹幕源服务进程和机器人本体进程
+pm2 start ecosystem.config.js
+# 查看机器人本体进程日志输出
+pm2 logs danmaqua-bot
+# 查看 Bilibili 弹幕源进程日志输出
+pm2 logs dmsrc-bilibili
+# 设置 PM2 开机自启（不支持 Windows）
+pm2 startup
+# 保存当前进程列表，下次系统自启时自动启动进程
+pm2 save
+```
 
 ## Contact author
 

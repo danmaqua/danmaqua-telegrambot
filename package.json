@@ -2,9 +2,10 @@
   "name": "danmaqua-tgbot",
   "version": "1.0.0",
   "description": "Danmaqua Telegram Bot",
-  "main": "index.js",
   "scripts": {
-    "bot": "node index.js"
+    "bot": "node bot/app.js",
+    "dmsrc:bilibili": "node dmsrc/bilibili/index.js",
+    "dmsrc:douyu": "node dmsrc/douyu/index.js"
   },
   "keywords": [],
   "author": "fython",
@@ -14,9 +15,12 @@
   },
   "license": "GPL-3.0-only",
   "dependencies": {
-    "bilibili-live-ws": "^4.0.1",
+    "bilibili-live-ws": "^5.0.0",
+    "douyudm": "^1.3.2-beta.2",
     "https-proxy-agent": "^5.0.0",
     "lowdb": "^1.0.0",
-    "telegraf": "^3.36.0"
+    "socket.io": "^2.3.0",
+    "socket.io-client": "^2.3.0",
+    "telegraf": "^3.38.0"
   }
 }
