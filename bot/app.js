@@ -3,40 +3,66 @@ const settings = require('./settings');
 
 const HttpsProxyAgent = require('https-proxy-agent');
 const { DanmakuSourceManager } = require('./api');
-const Telegraf = require('telegraf');
+const BotWrapper = require('./bot-wrapper');
 const Extra = require('telegraf/extra');
 
-class DanmaquaBot {
+class DanmaquaBot extends BotWrapper {
     constructor({ dmSrc, botToken, agent }) {
+        super({ botConfig, botToken, agent });
+        this.startCommandSimpleMessage = 'Welcome to use danmaqua bot!';
         this.dmSrc = dmSrc;
-        this.bot = new Telegraf(botToken, { telegram: { agent } });
 
-        this.bot.start(this.onCommandStart);
-        this.bot.command('register_chat',
-            this.checkUserPermissionForBot, this.onCommandRegisterChat);
-        this.bot.command('unregister_chat',
-            this.checkUserPermissionForBot, this.onCommandUnregisterChat);
-        this.bot.command('manage_chats',
-            this.onCommandManageChats);
-        this.bot.command('set_default_pattern',
-            this.checkUserPermissionForBot, this.onCommandSetDefaultPattern);
-        this.bot.command('set_default_admins',
-            this.checkUserPermissionForBot, this.onCommandSetDefaultAdmins);
-        this.bot.command('set_default_source',
-            this.checkUserPermissionForBot, this.onCommandSetDefaultSource);
-    }
-
-    start = async () => {
-        console.log('Bot is launching...');
-        while (!this.botUser) {
-            try {
-                this.botUser = await this.bot.telegram.getMe();
-            } catch (e) {
-                console.error(e);
+        this.addCommands([
+            {
+                command: 'register_chat',
+                title: '注册频道',
+                description: '让 Bot 将指定直播间的弹幕转发到频道中',
+                help: '使用方法：/register\\_chat \\[频道ID] \\[直播间号] \\[弹幕源(可选)]',
+                botAdminOnly: true,
+                callback: this.onCommandRegisterChat
+            },
+            {
+                command: 'unregister_chat',
+                title: '取消注册频道',
+                description: '对频道取消绑定弹幕转发',
+                help: '使用方法：/unregister\\_chat \\[频道ID]',
+                botAdminOnly: true,
+                callback: this.onCommandUnregisterChat
+            },
+            {
+                command: 'manage_chats',
+                title: '管理频道',
+                description: '管理已经绑定了弹幕转发的频道',
+                help: '使用方法：/manage\\_chats',
+                botAdminOnly: false,
+                callback: this.onCommandManageChats
+            },
+            {
+                command: 'set_default_admins',
+                title: '设置默认管理员',
+                description: '设置各个频道的默认管理员（并非 Bot 管理员）',
+                help: '使用方法：/set\\_default\\_admins \\[第一个管理员ID] \\[第二个管理员ID] ...',
+                botAdminOnly: true,
+                callback: this.onCommandSetDefaultAdmins
+            },
+            {
+                command: 'set_default_pattern',
+                title: '设置默认过滤规则',
+                description: '设置各个频道的默认过滤规则',
+                help: '使用方法：/set\\_default\\_pattern \\[正则表达式]',
+                botAdminOnly: true,
+                callback: this.onCommandSetDefaultAdmins
+            },
+            {
+                command: 'set_default_source',
+                title: '设置默认过滤规则',
+                description: '设置各个频道的默认过滤规则',
+                help: '使用方法：/set\\_default\\_source \\[正则表达式]',
+                botAdminOnly: true,
+                callback: this.onCommandSetDefaultSource
             }
-        }
-        return await this.bot.launch();
-    };
+        ]);
+    }
 
     notifyDanmaku = async (chatId, data, { hideUsername = false }) => {
         let msg = '';
@@ -49,57 +75,17 @@ class DanmaquaBot {
         return await this.bot.telegram.sendMessage(chatId, msg, extras);
     };
 
-    getChat = async (chatId) => {
-        try {
-            return await this.bot.telegram.getChat(chatId);
-        } catch (e) {
-            return null;
-        }
-    };
-
-    hasUserPermissionForBot = (id) => {
-        return botConfig.botAdmins.indexOf(id) !== -1;
-    };
-
-    hasPermissionForChat = (id, chatId) => {
-        return botConfig.botAdmins.indexOf(id) !== -1 ||
-            settings.getChatConfig(chatId).admin.indexOf(id) !== -1;
-    };
-
-    canSendMessageToChat = async (chatId) => {
-        try {
-            let member = await this.bot.telegram.getChatMember(chatId, this.botUser.id);
-            return member.status === 'member' || member.status === 'administrator' || member.status === 'creator';
-        } catch (ignored) {
-        }
-        return false;
-    };
-
-    checkUserPermissionForBot = async (ctx, next) => {
-        if (!this.hasUserPermissionForBot(ctx.message.from.id)) {
-            ctx.reply('No permission for bot');
-            return;
-        }
-        await next();
-    };
-
-    checkUserPermissionForChat = (chatId) => {
-        return async (ctx, next) => {
-            if (!this.hasPermissionForChat(ctx.message.from.id, chatId)) {
-                ctx.reply('No permission for chat');
-                return;
+    getManagedChatsConfig = (userId) => {
+        const result = [];
+        const chatConfigs = settings.getChatConfigs();
+        for (let chatId of Object.keys(chatConfigs)) {
+            const chatConfig = Object.assign({}, chatConfigs[chatId], { chatId });
+            if (this.hasUserPermissionForBot(userId) || chatConfig.admin.indexOf(userId) !== -1) {
+                result.push(chatConfig);
             }
-            await next();
-        };
+        }
+        return result;
     };
-
-    onCommandStart = async (ctx) => {
-        return ctx.reply('Welcome to use danmaqua bot!');
-    };
-
-    onCommandHelp = async (ctx) => {
-        return ctx.reply('TODO!');
-    }
 
     onCommandRegisterChat = async (ctx) => {
         let [_, chatId, roomId, source] = ctx.message.text.split(' ');
@@ -167,7 +153,24 @@ class DanmaquaBot {
     };
 
     onCommandManageChats = async (ctx) => {
-        ctx.reply('TODO!');
+        const userId = ctx.message.from.id;
+        const managedChats = [];
+        for (let cfg of this.getManagedChatsConfig(userId)) {
+            const chat = await this.getChat(cfg.chatId);
+            let displayName = '' + chat.id;
+            if (chat.title && !chat.username) {
+                displayName = chat.title;
+            } else if (!chat.title && chat.username) {
+                displayName = '@' + chat.username;
+            } else if (chat.title && chat.username) {
+                displayName = chat.title + ' (@' + chat.username + ')';
+            }
+            managedChats.push({
+                id: chat.id,
+                displayName,
+            });
+        }
+        ctx.reply(JSON.stringify(managedChats));
     };
 
     onCommandSetDefaultPattern = async (ctx) => {

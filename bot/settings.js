@@ -96,6 +96,14 @@ class Settings {
         return result;
     }
 
+    getChatConfigs() {
+        const result = {};
+        for (let chatId of Object.keys(this.chatsConfig)) {
+            result[chatId] = this.getChatConfig(chatId);
+        }
+        return result;
+    }
+
     getDanmakuSource(id) {
         for (let item of this.danmakuSources) {
             if (item.id === id) {
