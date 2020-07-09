@@ -17,6 +17,7 @@ class Settings {
 
     globalConfigPath = '';
     chatsConfigDir = '';
+    userStatesPath = '';
 
     _saveCallback = null;
 
@@ -36,6 +37,8 @@ class Settings {
             fs.mkdirSync(this.dataDir);
         }
         this.globalConfigPath = path.join(this.dataDir, 'global.json');
+        this.chatsConfigDir = path.join(this.dataDir, 'chats');
+        this.userStatesPath = path.join(this.dataDir, 'user_states.json');
 
         // Read global chat default configuration
         let globalConfig = {};
@@ -55,7 +58,6 @@ class Settings {
         this.globalConfig = globalConfig;
 
         // Read chats configuration
-        this.chatsConfigDir = path.join(this.dataDir, 'chats');
         let chatsConfig = {};
         if (!fs.existsSync(this.chatsConfigDir)) {
             fs.mkdirSync(this.chatsConfigDir);
@@ -73,6 +75,14 @@ class Settings {
         }
         this.chatsConfig = chatsConfig;
 
+        // Read user states configuration
+        let userStates = {};
+        if (fs.existsSync(this.userStatesPath)) {
+            const buf = fs.readFileSync(this.userStatesPath);
+            userStates = JSON.parse(buf.toString('utf-8'));
+        }
+        this.userStates = userStates;
+
         if (autoSave) {
             this._saveCallback = setInterval(() => this.saveConfig(), this.dataSaveInterval);
         }
@@ -86,6 +96,9 @@ class Settings {
             const chatConfigJson = JSON.stringify(this.chatsConfig[chatId], null, 4);
             fs.writeFileSync(path.join(this.chatsConfigDir, `${chatId}.json`), chatConfigJson);
         }
+
+        const userStatesJson = JSON.stringify(this.userStates, null, 4);
+        fs.writeFileSync(this.userStatesPath, userStatesJson);
     }
 
     getChatConfig(chatId) {
@@ -170,6 +183,39 @@ class Settings {
         this.globalConfig.danmakuSource = id;
     }
 
+    getUserStateCode(userId) {
+        const state = this.userStates[userId];
+        if (state) {
+            return state.code;
+        } else {
+            return -1;
+        }
+    }
+
+    getUserStateData(userId) {
+        const state = this.userStates[userId];
+        if (state) {
+            return state.data;
+        } else {
+            return null;
+        }
+    }
+
+    setUserState(userId, code, data) {
+        if (!Object.keys(this.userStates).find(v => v === userId)) {
+            this.userStates[userId] = { code, data: data || null };
+        } else {
+            this.userStates[userId].code = code;
+            if (data !== undefined) {
+                this.userStates[userId].data = data;
+            }
+        }
+    }
+
+    clearUserState(userId) {
+        delete this.userStates[userId];
+    }
+
     _ensureChatConfig(chatId) {
         if (!Object.keys(this.chatsConfig).find(value => value == chatId)) {
             this.chatsConfig[chatId] = {};
@@ -181,6 +227,7 @@ class Settings {
         console.log('Data dir: ', this.dataDir);
         console.log('Global config: ', this.globalConfig);
         console.log('Chats config: ', this.chatsConfig);
+        console.log('User states: ', this.userStates);
     }
 }
 

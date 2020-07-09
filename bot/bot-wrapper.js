@@ -54,7 +54,7 @@ class BotWrapper {
 
     checkUserPermissionForBot = async (ctx, next) => {
         if (!this.hasUserPermissionForBot(ctx.message.from.id)) {
-            ctx.reply('No permission for bot');
+            ctx.reply('你不是这个 Bot 的管理员。');
             return;
         }
         await next();
@@ -63,7 +63,7 @@ class BotWrapper {
     checkUserPermissionForChat = (chatId) => {
         return async (ctx, next) => {
             if (!this.hasPermissionForChat(ctx.message.from.id, chatId)) {
-                ctx.reply('No permission for chat');
+                ctx.reply('你不是这个对话的管理员。');
                 return;
             }
             await next();
@@ -120,24 +120,24 @@ class BotWrapper {
         if (commandName) {
             const rec = this.commandRecords.find((record) => record.command === commandName);
             if (!rec) {
-                return ctx.reply(`Cannot find command: ${commandName}`);
+                return ctx.reply(`无法找到命令：${commandName}`);
             } else {
-                let res = 'Help for command /' + rec.command.replace(/_/g, '\\_');
-                res += ' :\n' + rec.help;
+                let res = '命令 /' + rec.command.replace(/_/g, '\\_');
+                res += ' 的帮助说明：\n' + rec.help;
                 return ctx.reply(res, Extra.markdown());
             }
         }
         let res = this.helpCommandMessageHeader + '\n';
-        res += 'Supported commands: \n';
+        res += '支持的命令：\n';
         for (let command of this.commandRecords) {
             res += '/' + command.command.replace(/_/g, '\\_') +
                 ' : **' + command.title + '**' +
                 ' - ' + command.description + '\n';
         }
         if (this.commandRecords.length < 1) {
-            res += 'No public commands.\n';
+            res += '没有公开的命令。\n';
         }
-        res += '\nInput `/help [command]` to query documentation for the command you want to know.';
+        res += '\n输入 `/help [command]` 可以查询你想了解的命令的使用方法和参数。';
         return ctx.reply(res, Extra.markdown());
     }
 }
