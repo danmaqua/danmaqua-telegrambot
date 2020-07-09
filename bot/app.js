@@ -288,15 +288,17 @@ class DanmaquaBot extends BotWrapper {
         const buttons = [];
         for (let cfg of this.getManagedChatsConfigByPage(userId, page)) {
             const chat = await this.getChat(cfg.chatId);
-            let displayName = '' + chat.id;
-            if (chat.title && !chat.username) {
-                displayName = chat.title;
-            } else if (!chat.title && chat.username) {
-                displayName = '@' + chat.username;
-            } else if (chat.title && chat.username) {
-                displayName = chat.title + ' (@' + chat.username + ')';
+            let displayName = '' + cfg.chatId;
+            if (chat) {
+                if (chat.title && !chat.username) {
+                    displayName = chat.title;
+                } else if (!chat.title && chat.username) {
+                    displayName = '@' + chat.username;
+                } else if (chat.title && chat.username) {
+                    displayName = chat.title + ' (@' + chat.username + ')';
+                }
             }
-            buttons.push([Markup.callbackButton(displayName, 'manage_chat:' + chat.id)]);
+            buttons.push([Markup.callbackButton(displayName, 'manage_chat:' + cfg.chatId)]);
         }
         const pageButtons = [];
         const pageCount = this.getManagedChatsPageCount(userId);
@@ -334,6 +336,10 @@ class DanmaquaBot extends BotWrapper {
 
     onActionManageChat = async (ctx) => {
         const targetChatId = parseInt(ctx.match[1]);
+        if (!await this.canSendMessageToChat(targetChatId)) {
+            return await ctx.answerCbQuery(
+                '这个机器人无法发送消息给对话：' + targetChatId + '。请检查权限配置是否正确。', true);
+        }
         this.requestManageChat(ctx, targetChatId);
         return await ctx.answerCbQuery();
     };

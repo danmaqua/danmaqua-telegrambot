@@ -34,7 +34,7 @@ class Settings {
         this.botAdmins = botConfig.botAdmins;
         this.danmakuSources = botConfig.danmakuSources;
         if (!fs.existsSync(this.dataDir)) {
-            fs.mkdirSync(this.dataDir);
+            fs.mkdirSync(path.resolve(this.dataDir));
         }
         this.globalConfigPath = path.join(this.dataDir, 'global.json');
         this.chatsConfigDir = path.join(this.dataDir, 'chats');

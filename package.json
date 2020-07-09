@@ -5,7 +5,8 @@
   "scripts": {
     "bot": "node bot/app.js",
     "dmsrc:bilibili": "node dmsrc/bilibili/index.js",
-    "dmsrc:douyu": "node dmsrc/douyu/index.js"
+    "dmsrc:douyu": "node dmsrc/douyu/index.js",
+    "transfer:from_v1": "node bot/transfer-helper.js"
   },
   "keywords": [],
   "author": "fython",
