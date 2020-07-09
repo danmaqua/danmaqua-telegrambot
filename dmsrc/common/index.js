@@ -1,6 +1,10 @@
 const http = require('http');
 const ioServer = require('socket.io');
 
+const MSG_JOIN_ROOM = 'join_room';
+const MSG_LEAVE_ROOM = 'leave_room';
+const MSG_RECONNECT_ROOM = 'reconnect_room';
+
 class Danmaku {
     constructor({sender: {uid, username, url}, text, timestamp, roomId}) {
         this.sender = {uid, username, url};
@@ -29,30 +33,18 @@ class BaseDanmakuWebSocketSource {
         this.io.on('connection', (socket) => {
             this.onConnected(socket);
             const connectedRooms = [];
-            socket.on('join', (roomId) => {
-                if (typeof roomId !== 'number' || Number.isNaN(roomId)) {
-                    socket.emit('error', `room id ${roomId} must be Number not NaN`);
-                    return;
-                }
+            socket.on(MSG_JOIN_ROOM, (roomId) => {
                 this.onJoin(roomId);
                 connectedRooms.push(roomId);
             });
-            socket.on('leave', (roomId) => {
-                if (typeof roomId !== 'number' || Number.isNaN(roomId)) {
-                    socket.emit('error', `room id ${roomId} must be Number not NaN`);
-                    return;
-                }
+            socket.on(MSG_LEAVE_ROOM, (roomId) => {
                 this.onLeave(roomId);
                 const index = connectedRooms.indexOf(roomId);
                 if (index >= 0) {
                     connectedRooms.splice(index, 1);
                 }
             });
-            socket.on('reconnect', (roomId) => {
-                if (typeof roomId !== 'number' || Number.isNaN(roomId)) {
-                    socket.emit('error', `room id ${roomId} must be Number not NaN`);
-                    return;
-                }
+            socket.on(MSG_RECONNECT_ROOM, (roomId) => {
                 this.onReconnect(roomId);
             });
             socket.on('disconnect', (reason) => {
@@ -93,4 +85,4 @@ class BaseDanmakuWebSocketSource {
     }
 }
 
-module.exports = { Danmaku, BaseDanmakuWebSocketSource };
+module.exports = { Danmaku, BaseDanmakuWebSocketSource, MSG_JOIN_ROOM, MSG_LEAVE_ROOM, MSG_RECONNECT_ROOM };

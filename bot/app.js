@@ -87,13 +87,16 @@ class DanmaquaBot extends BotWrapper {
         ]);
 
         this.bot.command('cancel', this.onCommandCancel);
-        this.bot.action(/manage_chat:([-\d]+)/, this.onActionManageChat);
-        this.bot.action(/manage_chats_pages:(\d+)/, this.onActionManageChatsPages);
-        this.bot.action(/change_danmaku_src:([-\d]+)/, this.onActionChangeDanmakuSrc);
-        this.bot.action(/change_pattern:([-\d]+)/, this.onActionChangePattern);
-        this.bot.action(/change_admin:([-\d]+)/, this.onActionChangeAdmin);
-        this.bot.action(/change_blocked_users:([-\d]+)/, this.onActionChangeBlockedUsers);
-        this.bot.action(/block_user:([-\d]+):([-_a-zA-Z\d]+)/, this.onActionBlockUser);
+        this.bot.action(/^manage_chat:([-\d]+)/, this.onActionManageChat);
+        this.bot.action(/^manage_chats_pages:(\d+)/, this.onActionManageChatsPages);
+        this.bot.action(/^change_danmaku_src:([-\d]+)/, this.onActionChangeDanmakuSrc);
+        this.bot.action(/^change_pattern:([-\d]+)/, this.onActionChangePattern);
+        this.bot.action(/^change_admin:([-\d]+)/, this.onActionChangeAdmin);
+        this.bot.action(/^change_blocked_users:([-\d]+)/, this.onActionChangeBlockedUsers);
+        this.bot.action(/^unregister_chat:([-\d]+)/, this.onActionUnregisterChat);
+        this.bot.action(/^confirm_unregister_chat:([-\d]+)/, this.onActionConfirmUnregisterChat);
+        this.bot.action(/^reconnect_room:([a-zA-Z\d]+)_([-\d]+)/, this.onActionReconnectRoom);
+        this.bot.action(/^block_user:([-\d]+):([-_a-zA-Z\d]+)/, this.onActionBlockUser);
         this.bot.on('message', this.onMessage);
     }
 
@@ -278,15 +281,7 @@ class DanmaquaBot extends BotWrapper {
             return;
         }
         chatId = targetChat.id;
-        const regRoomId = settings.getChatConfig(chatId).roomId;
-        const regSource = settings.getChatConfig(chatId).danmakuSource;
-        if (!regRoomId) {
-            ctx.reply('这个对话未注册任何弹幕源。');
-            return;
-        }
-        settings.deleteChatConfig(chatId);
-        this.dmSrc.leaveRoom(regSource, regRoomId);
-        ctx.reply(`对话 id=${targetChat.id} 已成功取消注册。`);
+        this.requestUnregisterChat(ctx, chatId);
     };
 
     createManageChatsMessageKeyboard = async (userId, page) => {
@@ -354,8 +349,10 @@ class DanmaquaBot extends BotWrapper {
             displayName = chat.title + ' (@' + chat.username + ')';
         }
         const config = settings.getChatConfig(chatId);
+        const dmSrc = config.danmakuSource;
+        const roomId = config.roomId;
         let msgText = `你想要修改频道 “${displayName}” (id: ${chat.id}) 的什么设置？\n`;
-        msgText += '房间号/弹幕源：' + config.roomId + ' ' + config.danmakuSource + '\n';
+        msgText += `房间号/弹幕源：${roomId} ${dmSrc}\n`;
         msgText += '过滤规则：' + config.pattern;
         ctx.reply(msgText, Extra.markup(Markup.inlineKeyboard([
             [
@@ -363,8 +360,47 @@ class DanmaquaBot extends BotWrapper {
                 Markup.callbackButton('过滤规则', 'change_pattern:' + chat.id),
                 Markup.callbackButton('管理员', 'change_admin:' + chat.id)
             ],
-            [Markup.callbackButton('已屏蔽的用户', 'change_blocked_users:' + chat.id)]
+            [
+                Markup.callbackButton('屏蔽用户', 'change_blocked_users:' + chat.id),
+                Markup.callbackButton('重连房间', `reconnect_room:${dmSrc}_${roomId}`),
+                Markup.callbackButton('取消注册', 'unregister_chat:' + chat.id)
+            ]
         ])));
+    };
+
+    onActionReconnectRoom = async (ctx) => {
+        const dmSrc = ctx.match[1];
+        const roomId = parseInt(ctx.match[2]);
+        this.dmSrc.reconnectRoom(dmSrc, roomId);
+        ctx.reply(`已经对直播房间 ${dmSrc} ${roomId} 重新连接中。` +
+            `（由于目前是相同直播房间的所有对话共用一个弹幕连接，可能会影响到其它频道的弹幕转发）`);
+        return await ctx.answerCbQuery();
+    };
+
+    onActionUnregisterChat = async (ctx) => {
+        const targetChatId = parseInt(ctx.match[1]);
+        this.requestUnregisterChat(ctx, targetChatId);
+        return await ctx.answerCbQuery();
+    };
+
+    onActionConfirmUnregisterChat = async (ctx) => {
+        const chatId = parseInt(ctx.match[1]);
+        const regRoomId = settings.getChatConfig(chatId).roomId;
+        const regSource = settings.getChatConfig(chatId).danmakuSource;
+        if (!regRoomId) {
+            return await ctx.answerCbQuery('这个对话未注册任何弹幕源。', true);
+        }
+        settings.deleteChatConfig(chatId);
+        this.dmSrc.leaveRoom(regSource, regRoomId);
+        ctx.reply(`对话 id=${chatId} 已成功取消注册。`);
+        return await ctx.answerCbQuery();
+    };
+
+    requestUnregisterChat = async (ctx, chatId) => {
+        ctx.reply('你确定要取消注册对话 id=' + chatId + ' 吗？所有该对话的设置都会被清除且无法恢复。',
+            Extra.markup(Markup.inlineKeyboard([
+                Markup.callbackButton('是的，我不后悔', 'confirm_unregister_chat:' + chatId)
+            ])));
     };
 
     onActionChangeDanmakuSrc = async (ctx) => {

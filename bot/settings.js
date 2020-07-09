@@ -218,6 +218,7 @@ class Settings {
 
     deleteChatConfig(chatId) {
         delete this.chatsConfig[chatId];
+        fs.unlinkSync(path.join(this.chatsConfigDir, `${chatId}.json`));
     }
 
     setGlobalPattern(pattern) {

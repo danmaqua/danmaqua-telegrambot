@@ -1,4 +1,5 @@
 const EventEmitter = require('events');
+const { MSG_JOIN_ROOM, MSG_LEAVE_ROOM, MSG_RECONNECT_ROOM } = require('../dmsrc/common');
 const ioClient = require('socket.io-client');
 const settings = require('./settings');
 
@@ -10,15 +11,15 @@ class DanmakuWebSocketSource {
     }
 
     join(roomId) {
-        this.socket.emit('join', roomId);
+        this.socket.emit(MSG_JOIN_ROOM, roomId);
     }
 
     leave(roomId) {
-        this.socket.emit('leave', roomId);
+        this.socket.emit(MSG_LEAVE_ROOM, roomId);
     }
 
     reconnect(roomId) {
-        this.socket.emit('reconnect', roomId);
+        this.socket.emit(MSG_RECONNECT_ROOM, roomId);
     }
 }
 
@@ -53,7 +54,7 @@ class DanmakuSourceManager extends EventEmitter {
         }
         const socket = ioClient('http://' + url, options);
         socket.on('connect', () => {
-            console.log(`Danmaku source [id=${source.id}, url=${url}] is connected!`);
+            console.log(`Danmaku source is connected! [id=${source.id}, url=${url}]`);
             this.emit('connect', source);
         });
         const instance = new DanmakuWebSocketSource({
