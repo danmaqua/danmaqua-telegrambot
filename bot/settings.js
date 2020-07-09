@@ -159,6 +159,63 @@ class Settings {
         }
     }
 
+    setChatBlockedUsers(chatId, users) {
+        const c = this._ensureChatConfig(chatId);
+        c.blockedUsers = users || [];
+    }
+
+    addChatBlockedUsers(chatId, userId) {
+        if (userId.indexOf('_') < 0) {
+            console.error('Cannot add user id=' + userId + ' to block list. Please check id format.');
+            return;
+        }
+        const c = this._ensureChatConfig(chatId);
+        if (!c.blockedUsers) {
+            c.blockedUsers = [];
+        }
+        const index = c.blockedUsers.indexOf(userId);
+        if (index < 0) {
+            c.blockedUsers.push(userId);
+        }
+    }
+
+    removeChatBlockedUsers(chatId, userId) {
+        if (userId.indexOf('_') < 0) {
+            console.error('Cannot add user id=' + userId + ' to block list. Please check id format.');
+            return;
+        }
+        const c = this._ensureChatConfig(chatId);
+        if (!c.blockedUsers) {
+            c.blockedUsers = [];
+        }
+        const index = c.blockedUsers.indexOf(userId);
+        if (index >= 0) {
+            c.blockedUsers.splice(userId, 1);
+        }
+    }
+
+    containsChatBlockedUser(chatId, userId, source) {
+        if (source) {
+            userId = source + '_' + userId;
+        }
+        if (userId.indexOf('_') < 0) {
+            console.error('Cannot add user id=' + userId + ' to block list. Please check id format.');
+            return;
+        }
+        const c = this._ensureChatConfig(chatId);
+        if (!c.blockedUsers) {
+            c.blockedUsers = [];
+        }
+        return c.blockedUsers.indexOf(userId) >= 0;
+    }
+
+    getChatBlockedUsers(chatId) {
+        return this.getChatConfig(chatId).blockedUsers.map((value) => {
+            const [dmSrc, userId] = value.split('_');
+            return { src: dmSrc, uid: userId };
+        });
+    }
+
     deleteChatConfig(chatId) {
         delete this.chatsConfig[chatId];
     }

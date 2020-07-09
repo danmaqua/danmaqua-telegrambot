@@ -11,6 +11,7 @@ const MANAGE_PAGE_MAX_ITEMS = 4;
 const USER_STATE_CODE_CHAT_CHANGE_DANMAKU_SRC = 1;
 const USER_STATE_CODE_CHAT_CHANGE_PATTERN = 2;
 const USER_STATE_CODE_CHAT_CHANGE_ADMIN = 3;
+const USER_STATE_CODE_CHAT_CHANGE_BLOCK_USERS = 4;
 
 class DanmaquaBot extends BotWrapper {
     constructor({ dmSrc, botToken, agent }) {
@@ -46,10 +47,18 @@ class DanmaquaBot extends BotWrapper {
             {
                 command: 'manage_chats',
                 title: '管理频道',
-                description: '管理已经绑定了弹幕转发的频道',
+                description: '列出已经绑定了弹幕转发的频道，并进行选择管理',
                 help: '使用方法：/manage\\_chats',
                 botAdminOnly: false,
                 callback: this.onCommandManageChats
+            },
+            {
+                command: 'manage_chat',
+                title: '管理指定的频道',
+                description: '管理指定的已绑定弹幕转发的频道',
+                help: '使用方法：/manage\\_chat \\[频道ID]',
+                botAdminOnly: false,
+                callback: this.onCommandManageChat
             },
             {
                 command: 'set_default_admins',
@@ -83,6 +92,8 @@ class DanmaquaBot extends BotWrapper {
         this.bot.action(/change_danmaku_src:([-\d]+)/, this.onActionChangeDanmakuSrc);
         this.bot.action(/change_pattern:([-\d]+)/, this.onActionChangePattern);
         this.bot.action(/change_admin:([-\d]+)/, this.onActionChangeAdmin);
+        this.bot.action(/change_blocked_users:([-\d]+)/, this.onActionChangeBlockedUsers);
+        this.bot.action(/block_user:([-\d]+):([-_a-zA-Z\d]+)/, this.onActionBlockUser);
         this.bot.on('message', this.onMessage);
     }
 
@@ -140,17 +151,77 @@ class DanmaquaBot extends BotWrapper {
         }
         const userId = ctx.message.from.id;
         const stateCode = settings.getUserStateCode(userId);
+        const stateData = settings.getUserStateData(userId);
         if (stateCode === USER_STATE_CODE_CHAT_CHANGE_DANMAKU_SRC) {
-            await this.onAnswerChangeDanmakuSrc(ctx, settings.getUserStateData(userId));
+            this.onAnswerChangeDanmakuSrc(ctx, stateData);
         } else if (stateCode === USER_STATE_CODE_CHAT_CHANGE_PATTERN) {
-            await this.onAnswerChangePattern(ctx, settings.getUserStateData(userId));
+            this.onAnswerChangePattern(ctx, stateData);
         } else if (stateCode === USER_STATE_CODE_CHAT_CHANGE_ADMIN) {
-            await this.onAnswerChangeAdmin(ctx, settings.getUserStateData(userId));
+            this.onAnswerChangeAdmin(ctx, stateData);
+        } else if (stateCode === USER_STATE_CODE_CHAT_CHANGE_BLOCK_USERS) {
+            this.onAnswerChangeBlockedUsers(ctx, stateData);
         }
     };
 
     onForwardMessageFromChat = async (ctx) => {
-        ctx.reply('TODO!');
+        const chatId = ctx.message.forward_from_chat.id;
+        if (!ctx.message.text || ctx.message.chat.type !== 'private') {
+            return;
+        }
+        if (!this.hasPermissionForChat(ctx.message.from.id, chatId)) {
+            ctx.reply('你没有这个对话的管理权限。');
+            return;
+        }
+        if (!settings.getChatConfig(chatId)) {
+            ctx.reply('这个对话没有在 Bot 注册。');
+            return;
+        }
+        // 提取弹幕中的用户信息，如果没有则提示错误
+        let username = null;
+        let uid = 0;
+        if (ctx.message.entities.length === 1) {
+            const firstEntity = ctx.message.entities[0];
+            if (firstEntity.type === 'text_link') {
+                const [_, result] = firstEntity.url.split('#');
+                if (result && result.indexOf('_') >= 0) {
+                    uid = result;
+                    username = ctx.message.text.substr(firstEntity.offset, firstEntity.length);
+                }
+            }
+        }
+        if (!username) {
+            ctx.reply('这条消息无法寻找到弹幕用户信息。');
+            return;
+        }
+        ctx.reply('你要对这条弹幕进行什么操作：', Extra.inReplyTo(ctx.message.message_id)
+            .markup(Markup.inlineKeyboard([
+                Markup.callbackButton(
+                    `屏蔽用户：${username}（${uid}）`,
+                    `block_user:${chatId}:${uid}`
+                )
+            ])));
+    };
+
+    onActionBlockUser = async (ctx) => {
+        const actionUser = ctx.update.callback_query.from;
+        const chatId = ctx.match[1];
+        const uid = ctx.match[2];
+        if (!this.hasPermissionForChat(actionUser.id, chatId)) {
+            return await ctx.answerCbQuery('你没有权限设置这个对话。', true);
+        }
+        if (!settings.getChatConfig(chatId)) {
+            return await ctx.answerCbQuery('这个对话没有在 Bot 中注册。', true);
+        }
+        const isBlocked = settings.containsChatBlockedUser(chatId, uid);
+        if (isBlocked) {
+            settings.removeChatBlockedUsers(chatId, uid);
+        } else {
+            settings.addChatBlockedUsers(chatId, uid);
+        }
+        return await ctx.answerCbQuery(
+            '用户 ' + uid + ' 已在对话 ' + chatId + ' 中被' + (isBlocked ? '解除屏蔽' : '屏蔽'),
+            true
+        );
     };
 
     onCommandRegisterChat = async (ctx) => {
@@ -284,9 +355,12 @@ class DanmaquaBot extends BotWrapper {
         }
         const msgText = `你想要修改频道 “${displayName}” (id: ${chat.id}) 的什么设置？`;
         ctx.reply(msgText, Extra.markup(Markup.inlineKeyboard([
-            Markup.callbackButton('弹幕房间号/弹幕源', 'change_danmaku_src:' + chat.id),
-            Markup.callbackButton('过滤规则', 'change_pattern:' + chat.id),
-            Markup.callbackButton('频道管理员', 'change_admin:' + chat.id)
+            [
+                Markup.callbackButton('房间号/弹幕源', 'change_danmaku_src:' + chat.id),
+                Markup.callbackButton('过滤规则', 'change_pattern:' + chat.id),
+                Markup.callbackButton('管理员', 'change_admin:' + chat.id)
+            ],
+            [Markup.callbackButton('已屏蔽的用户', 'change_blocked_users:' + chat.id)]
         ])));
     };
 
@@ -332,10 +406,39 @@ class DanmaquaBot extends BotWrapper {
         return await ctx.answerCbQuery();
     };
 
+    onActionChangeBlockedUsers = async (ctx) => {
+        const targetChatId = parseInt(ctx.match[1]);
+        const message = await ctx.reply(this.getChangeBlockedUsersMessageText(targetChatId), Extra.markdown());
+
+        settings.setUserState(ctx.update.callback_query.from.id,
+            USER_STATE_CODE_CHAT_CHANGE_BLOCK_USERS,
+            {
+                targetChatId,
+                chatId: message.chat.id,
+                messageId: message.message_id
+            });
+    };
+
+    getChangeBlockedUsersMessageText = (chatId) => {
+        let blockedUsers = settings.getChatBlockedUsers(chatId)
+            .map(({src, uid}) => src + '_' + uid);
+        if (blockedUsers.length > 0) {
+            blockedUsers = blockedUsers.reduce((t, next) => t + ', ' + next);
+        } else {
+            blockedUsers = '空';
+        }
+        return '你正在编辑 id=' + chatId + ' 的屏蔽用户列表，' +
+            '被屏蔽的用户弹幕不会被转发到对话中。\n' +
+            '输入 `add [弹幕源] [用户id]` 可以添加屏蔽用户，输入 `del [弹幕源] [用户id]` 可以解除屏蔽用户。' +
+            '例如：输入 `add bilibili 100` 可以屏蔽 bilibili 弹幕源 id 为 100 的用户。\n\n' +
+            '当前已被屏蔽的用户：\n`' + blockedUsers + '`\n' +
+            '回复 /cancel 完成屏蔽修改并退出互动式对话。';
+    };
+
     onAnswerChangeDanmakuSrc = async (ctx, chatId) => {
         let [roomId, srcId] = ctx.message.text.split(' ');
         if (isNaN(roomId)) {
-            ctx.reply('你输入的房间号不是合法的数字。', Extra.inReplyTo(ctx.message.id));
+            ctx.reply('你输入的房间号不是合法的数字。', Extra.inReplyTo(ctx.message.message_id));
             return;
         }
         roomId = Number(roomId);
@@ -343,7 +446,7 @@ class DanmaquaBot extends BotWrapper {
             const src = settings.getDanmakuSource(srcId);
             if (!src) {
                 ctx.reply('你输入的弹幕源不是合法的弹幕源，你可以输入 /list_dm_src 进行查询。',
-                    Extra.inReplyTo(ctx.message.id));
+                    Extra.inReplyTo(ctx.message.message_id));
                 return;
             }
         }
@@ -385,6 +488,56 @@ class DanmaquaBot extends BotWrapper {
         settings.setChatAdmin(chatId, admins);
         ctx.reply(`已成功为 id=${chatId} 频道设置了管理员：\`${admins}\``, Extra.markdown());
         settings.clearUserState(ctx.message.from.id);
+    };
+
+    onAnswerChangeBlockedUsers = async (ctx, { targetChatId, chatId, messageId }) => {
+        const [operation, src, uid] = ctx.message.text.split(' ');
+        if (operation !== 'add' && operation !== 'del') {
+            ctx.reply('不支持的屏蔽用户操作，如果你要进行其他操作请回复 /cancel');
+            return;
+        }
+        if (!src || !uid) {
+            ctx.reply('格式错误，请认真阅读修改说明。');
+            return;
+        }
+        if (operation === 'add') {
+            settings.addChatBlockedUsers(targetChatId, src + '_' + uid);
+            ctx.reply('已成功添加屏蔽用户：' + src + '_' + uid);
+        } else if (operation === 'del') {
+            settings.removeChatBlockedUsers(targetChatId, src + '_' + uid);
+            ctx.reply('已成功取消屏蔽用户：' + src + '_' + uid);
+        }
+        await this.bot.telegram.editMessageText(
+            chatId, messageId, undefined,
+            this.getChangeBlockedUsersMessageText(targetChatId),
+            {
+                chat_id: chatId,
+                message_id: messageId,
+                parse_mode: 'Markdown'
+            });
+    };
+
+    onCommandManageChat = async (ctx) => {
+        let [_, chatId] = ctx.message.text.split(' ');
+        if (!chatId) {
+            ctx.reply('管理频道命令使用方法：/manage_chat `chatId`', Extra.markdown());
+            return;
+        }
+        const targetChat = await this.getChat(chatId || ctx.chat.id);
+        if (!targetChat) {
+            ctx.reply('无法找到这个对话。');
+            return;
+        }
+        chatId = targetChat.id;
+        if (!settings.getChatConfig(chatId)) {
+            ctx.reply('这个对话未注册任何弹幕源。');
+            return;
+        }
+        if (!this.hasPermissionForChat(ctx.message.from.id, chatId)) {
+            ctx.reply('你没有管理这个对话的权限。');
+            return;
+        }
+        await this.requestManageChat(ctx, chatId);
     };
 
     onCommandListDMSrc = async (ctx) => {
@@ -458,8 +611,20 @@ class Application {
             botToken: botConfig.botToken,
             agent: this.agent
         });
-        this.dmSrc.on('danmaku', (danmaku) => this.onReceiveDanmaku(danmaku));
-        this.dmSrc.on('connect', (source) => this.onConnectDMSource(source));
+        this.dmSrc.on('danmaku', (danmaku) => {
+            try {
+                this.onReceiveDanmaku(danmaku);
+            } catch (e) {
+                console.error(e);
+            }
+        });
+        this.dmSrc.on('connect', (source) => {
+            try {
+                this.onConnectDMSource(source);
+            } catch (e) {
+                console.error(e);
+            }
+        });
     }
 
     onReceiveDanmaku(danmaku) {
@@ -470,6 +635,10 @@ class Application {
             let chatConfig = settings.chatsConfig[chatId];
             if (chatConfig.roomId) {
                 chatConfig = settings.getChatConfig(chatId);
+                if (chatConfig.blockedUsers &&
+                    chatConfig.blockedUsers.indexOf(danmaku.sourceId + '_' + danmaku.sender.uid) >= 0) {
+                    return;
+                }
                 if (danmaku.sourceId === chatConfig.danmakuSource && danmaku.roomId === chatConfig.roomId) {
                     const reg = new RegExp(chatConfig.pattern);
                     if (reg.test(danmaku.text)) {
