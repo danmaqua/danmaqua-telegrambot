@@ -284,7 +284,7 @@ class DanmaquaBot extends BotWrapper {
             ctx.reply('这个对话未注册任何弹幕源。');
             return;
         }
-        settings.unsetChatRoomId(chatId);
+        settings.deleteChatConfig(chatId);
         this.dmSrc.leaveRoom(regSource, regRoomId);
         ctx.reply(`对话 id=${targetChat.id} 已成功取消注册。`);
     };
@@ -353,7 +353,10 @@ class DanmaquaBot extends BotWrapper {
         } else if (chat.title && chat.username) {
             displayName = chat.title + ' (@' + chat.username + ')';
         }
-        const msgText = `你想要修改频道 “${displayName}” (id: ${chat.id}) 的什么设置？`;
+        const config = settings.getChatConfig(chatId);
+        let msgText = `你想要修改频道 “${displayName}” (id: ${chat.id}) 的什么设置？\n`;
+        msgText += '房间号/弹幕源：' + config.roomId + ' ' + config.danmakuSource + '\n';
+        msgText += '过滤规则：' + config.pattern;
         ctx.reply(msgText, Extra.markup(Markup.inlineKeyboard([
             [
                 Markup.callbackButton('房间号/弹幕源', 'change_danmaku_src:' + chat.id),

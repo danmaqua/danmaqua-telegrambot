@@ -1,6 +1,13 @@
 const { Danmaku, BaseDanmakuWebSocketSource } = require('../common');
 const { KeepLiveWS, KeepLiveTCP } = require('bilibili-live-ws');
+const cron = require('node-cron');
 const bilibiliConfig = require('../../dmsrc.config').bilibili;
+
+const BATCH_RECONNECT_DELAY = 1000 * 10;
+
+function delay(ms) {
+    return new Promise((resolve) => setTimeout(() => resolve(), ms));
+}
 
 class BilibiliDanmakuSource extends BaseDanmakuWebSocketSource {
     constructor(config) {
@@ -10,6 +17,10 @@ class BilibiliDanmakuSource extends BaseDanmakuWebSocketSource {
         if (this.bilibiliProtocol !== 'ws' || this.bilibiliProtocol !== 'tcp') {
             console.log('Bilibili Danmaku Source configuration didn\'t specify protocol type. Set to ws as default.');
             this.bilibiliProtocol = 'ws';
+        }
+        if (config.reconnectCron) {
+            console.log('Reconnect task schedule at "' + config.reconnectCron + '"');
+            cron.schedule(config.reconnectCron, () => this.batchReconnect());
         }
     }
 
@@ -95,6 +106,14 @@ class BilibiliDanmakuSource extends BaseDanmakuWebSocketSource {
             entity.live = this.createLive(roomId);
         } catch (e) {
             console.error(e);
+        }
+    }
+
+    batchReconnect = async () => {
+        console.log('Start batch reconnect task');
+        for (let roomId of Object.keys(this.liveList)) {
+            this.onReconnect(Number(roomId));
+            await delay(BATCH_RECONNECT_DELAY);
         }
     }
 }

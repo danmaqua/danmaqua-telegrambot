@@ -1,11 +1,22 @@
 const { Danmaku, BaseDanmakuWebSocketSource } = require('../common');
 const DouyuDM = require('douyudm');
+const cron = require('node-cron');
 const douyuConfig = require('../../dmsrc.config').douyu;
+
+const BATCH_RECONNECT_DELAY = 1000 * 10;
+
+function delay(ms) {
+    return new Promise((resolve) => setTimeout(() => resolve(), ms));
+}
 
 class DouyuDanmakuSource extends BaseDanmakuWebSocketSource {
     constructor(config) {
         super(config);
         this.liveList = {};
+        if (config.reconnectCron) {
+            console.log('Reconnect task schedule at "' + config.reconnectCron + '"');
+            cron.schedule(config.reconnectCron, () => this.batchReconnect());
+        }
     }
 
     isConnected(roomId) {
@@ -90,6 +101,14 @@ class DouyuDanmakuSource extends BaseDanmakuWebSocketSource {
             entity.live = this.createLive(roomId);
         } catch (e) {
             console.error(e);
+        }
+    }
+
+    batchReconnect = async () => {
+        console.log('Start batch reconnect task');
+        for (let roomId of Object.keys(this.liveList)) {
+            this.onReconnect(Number(roomId));
+            await delay(BATCH_RECONNECT_DELAY);
         }
     }
 }
