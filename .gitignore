@@ -4,3 +4,6 @@
 /data
 *.iml
 config.js
+bot.config.js
+dmsrc.config.js
+
