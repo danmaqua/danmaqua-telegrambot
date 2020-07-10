@@ -1,5 +1,7 @@
 const http = require('http');
 const ioServer = require('socket.io');
+const log4js = require('log4js');
+const path = require('path');
 
 const MSG_JOIN_ROOM = 'join_room';
 const MSG_LEAVE_ROOM = 'leave_room';
@@ -16,6 +18,25 @@ class Danmaku {
 
 class BaseDanmakuWebSocketSource {
     constructor(config) {
+        log4js.configure({
+            appenders: {
+                stdout: { type: 'stdout' },
+                outfile: {
+                    type: 'DateFile',
+                    filename: path.join(config.logsDir, 'access-log'),
+                    pattern: 'yyyy-MM-dd.log',
+                    alwaysIncludePattern: true,
+                    keepFileExt: false
+                }
+            },
+            categories: {
+                default: {
+                    appenders: ['stdout', 'outfile'],
+                    level: 'debug'
+                }
+            }
+        });
+        this.logger = log4js.getLogger('default');
         this.port = config.port;
         this.basicAuth = config.basicAuth;
         this.server = http.createServer();
@@ -25,6 +46,8 @@ class BaseDanmakuWebSocketSource {
             if (this.basicAuth) {
                 const authHeader = socket.handshake.headers['authorization'];
                 if (this.basicAuth !== authHeader) {
+                    this.logger.error('Remote address=' + socket.handshake.address + ' attempt to connect socket ' +
+                        'with Authorization=' + authHeader + '. Refused due to incorrect auth.')
                     return next(new Error('Authentication error.'));
                 }
             }
@@ -57,23 +80,23 @@ class BaseDanmakuWebSocketSource {
     }
 
     onConnected(socket) {
-        console.log('onConnected: socket address=' + socket.handshake.address + ' called.');
+        this.logger.debug('onConnected: socket address=' + socket.handshake.address + ' called.');
     }
 
     onJoin(roomId) {
-        console.log('onJoin: roomId=' + roomId + ' called.');
+        this.logger.debug('onJoin: roomId=' + roomId + ' called.');
     }
 
     onLeave(roomId) {
-        console.log('onLeave: roomId=' + roomId + ' called.');
+        this.logger.debug('onLeave: roomId=' + roomId + ' called.');
     }
 
     onReconnect(roomId) {
-        console.log('onReconnect: roomId=' + roomId + ' called.');
+        this.logger.debug('onReconnect: roomId=' + roomId + ' called.');
     }
 
     onDisconnect(reason) {
-        console.log('onDisconnect: reason=' + reason + ' called.')
+        this.logger.debug('onDisconnect: reason=' + reason + ' called.')
     }
 
     sendDanmaku(danmaku) {

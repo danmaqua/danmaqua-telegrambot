@@ -24,9 +24,10 @@ class DanmakuWebSocketSource {
 }
 
 class DanmakuSourceManager extends EventEmitter {
-    constructor() {
+    constructor(logger) {
         super();
         this.sourceInstance = {};
+        this.logger = logger;
         for (let source of settings.danmakuSources) {
             if (source.type === 'common-danmaku-ws') {
                 this.initWebSocketSource(source);
@@ -54,7 +55,7 @@ class DanmakuSourceManager extends EventEmitter {
         }
         const socket = ioClient('http://' + url, options);
         socket.on('connect', () => {
-            console.log(`Danmaku source is connected! [id=${source.id}, url=${url}]`);
+            this.logger.default.debug(`Danmaku source is connected! [id=${source.id}, url=${url}]`);
             this.emit('connect', source);
         });
         const instance = new DanmakuWebSocketSource({

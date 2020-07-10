@@ -14,7 +14,7 @@ class DouyuDanmakuSource extends BaseDanmakuWebSocketSource {
         super(config);
         this.liveList = {};
         if (config.reconnectCron) {
-            console.log('Reconnect task schedule at "' + config.reconnectCron + '"');
+            this.logger.info('Reconnect task schedule at "' + config.reconnectCron + '"');
             cron.schedule(config.reconnectCron, () => this.batchReconnect());
         }
     }
@@ -27,7 +27,7 @@ class DouyuDanmakuSource extends BaseDanmakuWebSocketSource {
     createLive(roomId) {
         const live = new DouyuDM(roomId, { debug: false });
         live.on('connect', () => {
-            console.log(`Connect to live room: ${roomId}`);
+            this.logger.debug(`Connect to live room: ${roomId}`);
         });
         live.on('chatmsg', (data) => {
             const dmSenderUid = data.uid;
@@ -50,7 +50,7 @@ class DouyuDanmakuSource extends BaseDanmakuWebSocketSource {
             this.sendDanmaku(danmaku);
         });
         live.on('error', (e) => {
-            console.log(`DouyuDanmakuSource roomId=${roomId} error:`, e);
+            this.logger.error(`DouyuDanmakuSource roomId=${roomId} error:`, e);
         });
         live.run();
         return live;
@@ -68,7 +68,7 @@ class DouyuDanmakuSource extends BaseDanmakuWebSocketSource {
                 counter: 1
             };
         } catch (e) {
-            console.error(e);
+            this.logger.error(e);
         }
     }
 
@@ -81,12 +81,12 @@ class DouyuDanmakuSource extends BaseDanmakuWebSocketSource {
             const entity = this.liveList[roomId];
             entity.counter--;
             if (entity.counter <= 0) {
-                console.log(`Room ${roomId} is no longer used. Close now.`);
+                this.logger.debug(`Room ${roomId} is no longer used. Close now.`);
                 entity.live.logout();
                 delete this.liveList[roomId];
             }
         } catch (e) {
-            console.error(e);
+            this.logger.error(e);
         }
     }
 
@@ -100,12 +100,12 @@ class DouyuDanmakuSource extends BaseDanmakuWebSocketSource {
             entity.live.logout();
             entity.live = this.createLive(roomId);
         } catch (e) {
-            console.error(e);
+            this.logger.error(e);
         }
     }
 
     batchReconnect = async () => {
-        console.log('Start batch reconnect task');
+        this.logger.debug('Start batch reconnect task');
         for (let roomId of Object.keys(this.liveList)) {
             this.onReconnect(Number(roomId));
             await delay(BATCH_RECONNECT_DELAY);
@@ -115,4 +115,4 @@ class DouyuDanmakuSource extends BaseDanmakuWebSocketSource {
 
 const src = new DouyuDanmakuSource(douyuConfig);
 src.listen();
-console.log('Douyu Danmaku Source Server is listening at port ' + src.port);
+src.logger.info('Douyu Danmaku Source Server is listening at port ' + src.port);

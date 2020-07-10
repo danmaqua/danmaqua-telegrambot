@@ -6,6 +6,8 @@ const { DanmakuSourceManager } = require('./api');
 const BotWrapper = require('./bot-wrapper');
 const Extra = require('telegraf/extra');
 const Markup = require('telegraf/markup');
+const log4js = require('log4js');
+const path = require('path');
 
 const MANAGE_PAGE_MAX_ITEMS = 4;
 const USER_STATE_CODE_CHAT_CHANGE_DANMAKU_SRC = 1;
@@ -14,8 +16,8 @@ const USER_STATE_CODE_CHAT_CHANGE_ADMIN = 3;
 const USER_STATE_CODE_CHAT_CHANGE_BLOCK_USERS = 4;
 
 class DanmaquaBot extends BotWrapper {
-    constructor({ dmSrc, botToken, agent }) {
-        super({ botConfig, botToken, agent });
+    constructor({ dmSrc, botToken, agent, logger }) {
+        super({ botConfig, botToken, agent, logger });
         this.startCommandSimpleMessage = '欢迎使用 Danmaqua Bot！';
         this.dmSrc = dmSrc;
 
@@ -254,19 +256,22 @@ class DanmaquaBot extends BotWrapper {
         chatId = targetChat.id;
         roomId = Number(roomId);
         const curRoomId = settings.getChatConfig(chatId).roomId;
-        const curDanmakuSource = settings.getChatConfig(chatId).danmakuSource;
+        let curDanmakuSource = settings.getChatConfig(chatId).danmakuSource;
         if (curRoomId !== roomId || curDanmakuSource !== source) {
             if (curRoomId) {
                 this.dmSrc.leaveRoom(curDanmakuSource, curRoomId);
             }
             settings.setChatRoomId(chatId, roomId);
             settings.setChatDanmakuSource(chatId, source);
-            this.dmSrc.joinRoom(settings.getChatConfig(chatId).danmakuSource, roomId);
+            curDanmakuSource = settings.getChatConfig(chatId).danmakuSource;
+            this.dmSrc.joinRoom(curDanmakuSource, roomId);
         }
         ctx.reply(
             `对话 id=${targetChat.id} 已被注册到弹幕源 ` +
-            `${settings.getChatConfig(chatId).danmakuSource}:${roomId}`
+            `${curDanmakuSource}:${roomId}`
         );
+        this.user_access_log(ctx.message.from.id, 'Registered chat id=' + chatId +
+            ' to room: ' + curDanmakuSource + ' ' + roomId);
     };
 
     onCommandUnregisterChat = async (ctx) => {
@@ -380,6 +385,7 @@ class DanmaquaBot extends BotWrapper {
         this.dmSrc.reconnectRoom(dmSrc, roomId);
         ctx.reply(`已经对直播房间 ${dmSrc} ${roomId} 重新连接中。` +
             `（由于目前是相同直播房间的所有对话共用一个弹幕连接，可能会影响到其它频道的弹幕转发）`);
+        this.user_access_log(ctx.message.from.id, 'Reconnect room: ' + dmSrc + ' ' + roomId);
         return await ctx.answerCbQuery();
     };
 
@@ -399,6 +405,7 @@ class DanmaquaBot extends BotWrapper {
         settings.deleteChatConfig(chatId);
         this.dmSrc.leaveRoom(regSource, regRoomId);
         ctx.reply(`对话 id=${chatId} 已成功取消注册。`);
+        this.user_access_log(ctx.message.from.id, 'Unregistered chat id=' + chatId);
         return await ctx.answerCbQuery();
     };
 
@@ -507,6 +514,8 @@ class DanmaquaBot extends BotWrapper {
         }
         const newDanmakuSource = settings.getChatConfig(chatId).danmakuSource;
         ctx.reply(`已成功为 id=${chatId} 频道注册了 ${newDanmakuSource}:${roomId} 房间弹幕转发。`);
+        this.user_access_log(ctx.message.from.id, `Set chat id=${chatId} danmaku source to` +
+            ` ${newDanmakuSource}:${roomId}`)
         settings.clearUserState(ctx.message.from.id);
     };
 
@@ -520,6 +529,7 @@ class DanmaquaBot extends BotWrapper {
             new RegExp(pattern);
             settings.setChatPattern(chatId, pattern);
             ctx.reply(`已成功为 id=${chatId} 频道设置了过滤规则：\`${pattern}\``, Extra.markdown());
+            this.user_access_log(ctx.message.from.id, `Set chat id=${chatId} pattern to ${pattern}`);
             settings.clearUserState(ctx.message.from.id);
         } catch (e) {
             ctx.reply('设置失败，你输入的不是合法的正则表达式，错误：' + e);
@@ -532,6 +542,7 @@ class DanmaquaBot extends BotWrapper {
             .filter((value) => Number.isNaN(value));
         settings.setChatAdmin(chatId, admins);
         ctx.reply(`已成功为 id=${chatId} 频道设置了管理员：\`${admins}\``, Extra.markdown());
+        this.user_access_log(ctx.message.from.id, `Set chat id=${chatId} admin to ${admins}`);
         settings.clearUserState(ctx.message.from.id);
     };
 
@@ -548,9 +559,11 @@ class DanmaquaBot extends BotWrapper {
         if (operation === 'add') {
             settings.addChatBlockedUsers(targetChatId, src + '_' + uid);
             ctx.reply('已成功添加屏蔽用户：' + src + '_' + uid);
+            this.user_access_log(ctx.message.from.id, 'Blocked danmaku user: ' + src + '_' + uid);
         } else if (operation === 'del') {
             settings.removeChatBlockedUsers(targetChatId, src + '_' + uid);
             ctx.reply('已成功取消屏蔽用户：' + src + '_' + uid);
+            this.user_access_log(ctx.message.from.id, 'Unblocked danmaku user: ' + src + '_' + uid);
         }
         await this.bot.telegram.editMessageText(
             chatId, messageId, undefined,
@@ -613,6 +626,7 @@ class DanmaquaBot extends BotWrapper {
             new RegExp(pattern);
             settings.setGlobalPattern(pattern);
             ctx.reply('成功设置默认过滤规则为：`' + pattern + '`', Extra.markdown());
+            this.user_access_log(ctx.message.from.id, 'Set default pattern to ' + pattern);
         } catch (e) {
             ctx.reply('设置默认过滤规则失败，错误原因：' + e);
         }
@@ -625,6 +639,7 @@ class DanmaquaBot extends BotWrapper {
             .filter((value) => Number.isNaN(value));
         settings.setGlobalAdmin(admins);
         ctx.reply('已设置默认管理员为 `' + admins.toString() + '`', Extra.markdown());
+        this.user_access_log(ctx.message.from.id, 'Set default admin to ' + admins.toString());
     }
 
     onCommandSetDefaultSource = async (ctx) => {
@@ -636,6 +651,7 @@ class DanmaquaBot extends BotWrapper {
         if (settings.danmakuSources.find((value) => value.id === newSrc)) {
             settings.setGlobalDanmakuSource(newSrc);
             ctx.reply('成功设置默认弹幕源为 ' + newSrc);
+            this.user_access_log(ctx.message.from.id, 'Set default danmaku source to ' + newSrc);
         } else {
             ctx.reply('无法找到弹幕源 id=' + newSrc);
         }
@@ -644,30 +660,59 @@ class DanmaquaBot extends BotWrapper {
 
 class Application {
     constructor() {
+        log4js.configure({
+            appenders: {
+                stdout: {
+                    type: 'stdout'
+                },
+                outfile: {
+                    type: 'DateFile',
+                    filename: path.join(botConfig.logsDir, 'access-log'),
+                    pattern: 'yyyy-MM-dd.log',
+                    alwaysIncludePattern: true,
+                    keepFileExt: false
+                }
+            },
+            categories: {
+                default: {
+                    appenders: ['stdout', 'outfile'],
+                    level: 'debug'
+                },
+                access: {
+                    appenders: ['outfile'],
+                    level: 'debug'
+                }
+            }
+        });
+        this.logger = {
+            default: log4js.getLogger('default'),
+            access: log4js.getLogger('access')
+        };
         settings.init(botConfig, true);
-        this.dmSrc = new DanmakuSourceManager();
+        this.dmSrc = new DanmakuSourceManager(this.logger);
         this.agent = null;
         if (botConfig.botProxy) {
             this.agent = new HttpsProxyAgent(botConfig.botProxy);
-            console.log('Bot is using proxy: ', botConfig.botProxy);
+            this.logger.default.info('Launcher: Bot is using proxy ', botConfig.botProxy);
         }
         this.bot = new DanmaquaBot({
             dmSrc: this.dmSrc,
             botToken: botConfig.botToken,
-            agent: this.agent
+            agent: this.agent,
+            logger: this.logger
         });
         this.dmSrc.on('danmaku', (danmaku) => {
             try {
                 this.onReceiveDanmaku(danmaku);
             } catch (e) {
-                console.error(e);
+                this.logger.default.error(e);
             }
         });
         this.dmSrc.on('connect', (source) => {
             try {
                 this.onConnectDMSource(source);
             } catch (e) {
-                console.error(e);
+                this.logger.default.error(e);
             }
         });
     }
@@ -689,7 +734,7 @@ class Application {
                     if (reg.test(danmaku.text)) {
                         const opts = { hideUsername: chatConfig.hideUsername };
                         this.bot.notifyDanmaku(chatId, danmaku, opts).catch((e) => {
-                            console.error(`Failed to notify ${chatId}: `, e);
+                            this.logger.access.error(`Failed to notify ${chatId}: `, e);
                         });
                     }
                 }
@@ -711,9 +756,9 @@ class Application {
 
     startBot() {
         this.bot.start().then(() => {
-            console.log('Bot is launched. Username: @' + this.bot.botUser.username);
+            this.logger.default.info('Launcher: Bot is launched. Username: @' + this.bot.botUser.username);
         }).catch((err) => {
-            console.error(err);
+            this.logger.default.error(err);
         });
     }
 }

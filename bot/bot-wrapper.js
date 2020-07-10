@@ -3,10 +3,11 @@ const Telegraf = require('telegraf');
 const Extra = require('telegraf/extra');
 
 class BotWrapper {
-    constructor({ botConfig, botToken, agent }) {
+    constructor({ botConfig, botToken, agent, logger }) {
         this.botConfig = botConfig;
         this.bot = new Telegraf(botToken, { telegram: { agent } });
         this.botUser = null;
+        this.logger = logger;
         this.commandRecords = [];
         this.startCommandSimpleMessage = '';
         this.helpCommandMessageHeader = '';
@@ -15,8 +16,12 @@ class BotWrapper {
         this.bot.command('help', this.onCommandHelp);
     }
 
+    user_access_log(userId, out) {
+        this.logger.access.debug(`UserId=${userId} ${out}`);
+    }
+
     start = async () => {
-        console.log('Bot is launching...');
+        this.logger.default.info('Launcher: Bot is launching...');
         while (!this.botUser) {
             try {
                 this.botUser = await this.bot.telegram.getMe();

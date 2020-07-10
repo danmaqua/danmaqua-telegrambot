@@ -1,6 +1,7 @@
 module.exports = {
     dataDir: './data',
-    dataSaveInterval: 1000,
+    dataSaveInterval: 10000,
+    logsDir: './data/logs/bot',
     botToken: '',
     botProxy: null,
     botAdmins: [],

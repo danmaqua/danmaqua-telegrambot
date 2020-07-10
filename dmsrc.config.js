@@ -18,7 +18,8 @@ module.exports = {
          * 避免长时间弹幕连接没有正确返回数据
          * 留空（null）可以关闭自动重连
          */
-        reconnectCron: '0 0 3 * * *'
+        reconnectCron: '0 0 3 * * *',
+        logsDir: './data/logs/bilibili-dm'
     },
     douyu: {
         /**
@@ -34,6 +35,7 @@ module.exports = {
          * 避免长时间弹幕连接没有正确返回数据
          * 留空（null）可以关闭自动重连
          */
-        reconnectCron: '0 0 3 * * *'
+        reconnectCron: '0 0 3 * * *',
+        logsDir: './data/logs/douyu-dm'
     }
 };
