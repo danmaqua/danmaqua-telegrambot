@@ -666,7 +666,7 @@ class Application {
                     type: 'stdout'
                 },
                 outfile: {
-                    type: 'DateFile',
+                    type: 'dateFile',
                     filename: path.join(botConfig.logsDir, 'access-log'),
                     pattern: 'yyyy-MM-dd.log',
                     alwaysIncludePattern: true,

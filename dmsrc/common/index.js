@@ -22,7 +22,7 @@ class BaseDanmakuWebSocketSource {
             appenders: {
                 stdout: { type: 'stdout' },
                 outfile: {
-                    type: 'DateFile',
+                    type: 'dateFile',
                     filename: path.join(config.logsDir, 'access-log'),
                     pattern: 'yyyy-MM-dd.log',
                     alwaysIncludePattern: true,
