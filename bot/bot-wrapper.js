@@ -12,6 +12,9 @@ class BotWrapper {
         this.startCommandSimpleMessage = '';
         this.helpCommandMessageHeader = '';
 
+        this.bot.catch((e) => {
+            this.logger.default.error(e);
+        });
         this.bot.start(this.onCommandStart);
         this.bot.command('help', this.onCommandHelp);
     }
@@ -126,6 +129,18 @@ class BotWrapper {
 
     addCommands(commands) {
         commands.forEach((item) => this.addCommand(item));
+    }
+
+    addActions(actions) {
+        for (let [triggers, callback] of actions) {
+            this.bot.action(triggers, async (ctx) => {
+                try {
+                    await callback(ctx);
+                } catch (e) {
+                    this.logger.default.error(e);
+                }
+            });
+        }
     }
 
     onCommandStart = async (ctx) => {

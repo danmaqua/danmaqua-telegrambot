@@ -87,18 +87,20 @@ class DanmaquaBot extends BotWrapper {
                 callback: this.onCommandSetDefaultSource
             }
         ]);
+        this.addActions([
+            [/^manage_chat:([-\d]+)/, this.onActionManageChat],
+            [/^manage_chats_pages:(\d+)/, this.onActionManageChatsPages],
+            [/^change_danmaku_src:([-\d]+)/, this.onActionChangeDanmakuSrc],
+            [/^change_pattern:([-\d]+)/, this.onActionChangePattern],
+            [/^change_admin:([-\d]+)/, this.onActionChangeAdmin],
+            [/^change_blocked_users:([-\d]+)/, this.onActionChangeBlockedUsers],
+            [/^unregister_chat:([-\d]+)/, this.onActionUnregisterChat],
+            [/^confirm_unregister_chat:([-\d]+)/, this.onActionConfirmUnregisterChat],
+            [/^reconnect_room:([a-zA-Z\d]+)_([-\d]+)/, this.onActionReconnectRoom],
+            [/^block_user:([-\d]+):([-_a-zA-Z\d]+)/, this.onActionBlockUser],
+        ]);
 
         this.bot.command('cancel', this.onCommandCancel);
-        this.bot.action(/^manage_chat:([-\d]+)/, this.onActionManageChat);
-        this.bot.action(/^manage_chats_pages:(\d+)/, this.onActionManageChatsPages);
-        this.bot.action(/^change_danmaku_src:([-\d]+)/, this.onActionChangeDanmakuSrc);
-        this.bot.action(/^change_pattern:([-\d]+)/, this.onActionChangePattern);
-        this.bot.action(/^change_admin:([-\d]+)/, this.onActionChangeAdmin);
-        this.bot.action(/^change_blocked_users:([-\d]+)/, this.onActionChangeBlockedUsers);
-        this.bot.action(/^unregister_chat:([-\d]+)/, this.onActionUnregisterChat);
-        this.bot.action(/^confirm_unregister_chat:([-\d]+)/, this.onActionConfirmUnregisterChat);
-        this.bot.action(/^reconnect_room:([a-zA-Z\d]+)_([-\d]+)/, this.onActionReconnectRoom);
-        this.bot.action(/^block_user:([-\d]+):([-_a-zA-Z\d]+)/, this.onActionBlockUser);
         this.bot.on('message', this.onMessage);
     }
 
@@ -247,7 +249,7 @@ class DanmaquaBot extends BotWrapper {
             ctx.reply(`弹幕源 ${source} 不受支持。`);
             return;
         }
-        const targetChat = await this.getChat(chatId || ctx.chat.id);
+        const targetChat = await this.getChat(chatId);
         const canSend = targetChat != null && await this.canSendMessageToChat(targetChat.id);
         if (!canSend) {
             ctx.reply('Bot 不被允许发送消息到对话 id=' + targetChat.id);
@@ -385,7 +387,7 @@ class DanmaquaBot extends BotWrapper {
         this.dmSrc.reconnectRoom(dmSrc, roomId);
         ctx.reply(`已经对直播房间 ${dmSrc} ${roomId} 重新连接中。` +
             `（由于目前是相同直播房间的所有对话共用一个弹幕连接，可能会影响到其它频道的弹幕转发）`);
-        this.user_access_log(ctx.message.from.id, 'Reconnect room: ' + dmSrc + ' ' + roomId);
+        this.user_access_log(ctx.update.callback_query.from.id, 'Reconnect room: ' + dmSrc + ' ' + roomId);
         return await ctx.answerCbQuery();
     };
 
@@ -405,7 +407,7 @@ class DanmaquaBot extends BotWrapper {
         settings.deleteChatConfig(chatId);
         this.dmSrc.leaveRoom(regSource, regRoomId);
         ctx.reply(`对话 id=${chatId} 已成功取消注册。`);
-        this.user_access_log(ctx.message.from.id, 'Unregistered chat id=' + chatId);
+        this.user_access_log(ctx.update.callback_query.from.id, 'Unregistered chat id=' + chatId);
         return await ctx.answerCbQuery();
     };
 
