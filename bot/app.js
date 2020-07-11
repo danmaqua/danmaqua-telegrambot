@@ -661,7 +661,7 @@ class DanmaquaBot extends BotWrapper {
 }
 
 class Application {
-    constructor() {
+    constructor(botConfig) {
         log4js.configure({
             appenders: {
                 stdout: {
@@ -766,9 +766,18 @@ class Application {
 }
 
 if (!botConfig.botToken || botConfig.botToken.length === 0) {
-    throw new Error('Please set bot token in bot.config.js!');
+    if (process.env.DMQ_BOT_TOKEN) {
+        botConfig.botToken = process.env.DMQ_BOT_TOKEN;
+    }
+}
+if (!botConfig.botProxy) {
+    if (process.env.DMQ_BOT_PROXY) {
+        botConfig.botProxy = process.env.DMQ_BOT_PROXY;
+    }
 }
 if (!botConfig.botAdmins || botConfig.botAdmins.length === 0) {
-    throw new Error('Please set bot administrators id in bot.config.js!');
+    if (process.env.DMQ_BOT_ADMINS) {
+        botConfig.botAdmins = process.env.DMQ_BOT_ADMINS.split(',').map(Number);
+    }
 }
-new Application().startBot();
+new Application(botConfig).startBot();
