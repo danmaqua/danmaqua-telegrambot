@@ -106,9 +106,21 @@ class BotWrapper {
             botAdminOnly,
         });
         if (botAdminOnly) {
-            this.bot.command(command, this.checkUserPermissionForBot, callback);
+            this.bot.command(command, this.checkUserPermissionForBot, (ctx) => {
+                try {
+                    callback(ctx);
+                } catch (e) {
+                    this.logger.default.error(e);
+                }
+            });
         } else {
-            this.bot.command(command, callback);
+            this.bot.command(command, (ctx) => {
+                try {
+                    callback(ctx);
+                } catch (e) {
+                    this.logger.default.error(e);
+                }
+            });
         }
     }
 
