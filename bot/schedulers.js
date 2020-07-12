@@ -1,6 +1,10 @@
 const cron = require('node-cron');
 
 class ChatsScheduler {
+    static OP_SET_ROOM = 'set_room';
+    static OP_SEND_TEXT = 'send_text';
+    static OP_SEND_HTML = 'send_html';
+
     constructor() {
         this.chatSchedulers = {};
         this.timezone = 'Asia/Shanghai';
@@ -9,6 +13,7 @@ class ChatsScheduler {
 
     init({ bot, settings, logger }) {
         this.bot = bot;
+        this.settings = settings;
         this.logger = logger;
 
         const configs = settings.getChatConfigs();
@@ -26,7 +31,27 @@ class ChatsScheduler {
     }
 
     validateAction(action) {
-        return true;
+        const [op, ...args] = action.split(' ');
+        if (op === ChatsScheduler.OP_SET_ROOM) {
+            if (args.length !== 1 && args.length !== 2) {
+                return false;
+            }
+            if (args.length === 2) {
+                const src = this.settings.getDanmakuSource(args[1]);
+                if (!src) {
+                    return false;
+                }
+            }
+            if (isNaN(Number(args[0]))) {
+                return false;
+            }
+            return true;
+        } else if (op === ChatsScheduler.OP_SEND_TEXT) {
+            return args.length > 0;
+        } else if (op === ChatsScheduler.OP_SEND_HTML) {
+            return args.length > 0;
+        }
+        return false;
     }
 
     addScheduler(chatId, expression, action) {
@@ -68,9 +93,26 @@ class ChatsScheduler {
         return this._ensureChatSchedulers(chatId).findIndex((s) => s.expression === expression);
     }
 
-    resolveAction(chatId, action) {
-        this.logger.default.info(`resolveAction: chatId=${chatId} action=${action}`);
-        console.log('TODO!');
+    async resolveAction(chatId, action) {
+        this.logger.default.info(`Resolve action: chatId=${chatId} action=${action}`);
+        const [op, ...args] = action.split(' ');
+        try {
+            if (op === ChatsScheduler.OP_SET_ROOM) {
+                let [roomId, src] = args;
+                roomId = Number(roomId);
+                this.bot.doRegisterChat(chatId, roomId, src);
+            } else if (op === ChatsScheduler.OP_SEND_TEXT) {
+                const msg = args.reduce((a, b) => `${a} ${b}`);
+                await this.bot.sendPlainText(chatId, msg);
+            } else if (op === ChatsScheduler.OP_SEND_HTML) {
+                const msg = args.reduce((a, b) => `${a} ${b}`);
+                await this.bot.sendHtml(chatId, msg);
+            }
+            this.bot.notifyActionDone(chatId, action);
+        } catch (e) {
+            this.logger.default.error(e);
+            this.bot.notifyActionError(chatId, action, e);
+        }
     }
 
     _ensureChatSchedulers(chatId) {

@@ -82,9 +82,9 @@ class DanmaquaBot extends BotWrapper {
             },
             {
                 command: 'set_default_source',
-                title: '设置默认过滤规则',
-                description: '设置各个频道的默认过滤规则',
-                help: '使用方法：/set\\_default\\_source \\[正则表达式]',
+                title: '设置默认弹幕源',
+                description: '设置各个频道的默认弹幕源',
+                help: '使用方法：/set\\_default\\_source \\[弹幕源 ID]',
                 botAdminOnly: true,
                 callback: this.onCommandSetDefaultSource
             }
@@ -117,6 +117,35 @@ class DanmaquaBot extends BotWrapper {
         const extras = Extra.HTML().webPreview(false).notifications(false);
         return await this.bot.telegram.sendMessage(chatId, msg, extras);
     };
+
+    notifyActionDone = (chatId, action) => {
+        const msgText = 'Bot 已成功于 `' + new Date(Date.now()) + '` 执行操作 `' + action + '`';
+        const extras = Extra.markdown();
+        for (let admin of settings.getChatConfig(chatId).admin) {
+            this.bot.telegram.sendMessage(admin, msgText, extras).catch((e) => {
+                this.logger.default.error(e);
+            });
+        }
+    };
+
+    notifyActionError = (chatId, action, e) => {
+        const msgText = 'Bot 在 `' + new Date(Date.now()) + '` 执行操作 `' + action +
+            '` 时遭遇错误：\n```' + e + '\n```\n';
+        const extras = Extra.markdown();
+        for (let admin of settings.getChatConfig(chatId).admin) {
+            this.bot.telegram.sendMessage(admin, msgText, extras).catch((e) => {
+                this.logger.default.error(e);
+            });
+        }
+    };
+
+    sendPlainText = async (chatId, text) => {
+        return await this.bot.telegram.sendMessage(chatId, text);
+    };
+
+    sendHtml = async (chatId, htmlText) => {
+        return await this.bot.telegram.sendMessage(chatId, htmlText, Extra.HTML());
+    }
 
     getManagedChatsConfig = (userId) => {
         const result = [];
@@ -262,6 +291,17 @@ class DanmaquaBot extends BotWrapper {
         }
         chatId = targetChat.id;
         roomId = Number(roomId);
+        this.doRegisterChat(chatId, roomId, source);
+        const curDanmakuSource = settings.getChatConfig(chatId).danmakuSource;
+        this.user_access_log(ctx.message.from.id, 'Registered chat id=' + chatId +
+            ' to room: ' + curDanmakuSource + ' ' + roomId);
+        ctx.reply(
+            `对话 id=${targetChat.id} 已被注册到弹幕源 ` +
+            `${curDanmakuSource}:${roomId}`
+        );
+    };
+
+    doRegisterChat = (chatId, roomId, source) => {
         const curRoomId = settings.getChatConfig(chatId).roomId;
         let curDanmakuSource = settings.getChatConfig(chatId).danmakuSource;
         if (curRoomId !== roomId || curDanmakuSource !== source) {
@@ -273,12 +313,6 @@ class DanmaquaBot extends BotWrapper {
             curDanmakuSource = settings.getChatConfig(chatId).danmakuSource;
             this.dmSrc.joinRoom(curDanmakuSource, roomId);
         }
-        ctx.reply(
-            `对话 id=${targetChat.id} 已被注册到弹幕源 ` +
-            `${curDanmakuSource}:${roomId}`
-        );
-        this.user_access_log(ctx.message.from.id, 'Registered chat id=' + chatId +
-            ' to room: ' + curDanmakuSource + ' ' + roomId);
     };
 
     onCommandUnregisterChat = async (ctx) => {
@@ -742,7 +776,7 @@ class DanmaquaBot extends BotWrapper {
         const admins = ctx.message.text.split(' ')
             .slice(1)
             .map((value) => Number(value))
-            .filter((value) => Number.isNaN(value));
+            .filter((value) => !isNaN(value));
         settings.setGlobalAdmin(admins);
         ctx.reply('已设置默认管理员为 `' + admins.toString() + '`', Extra.markdown());
         this.user_access_log(ctx.message.from.id, 'Set default admin to ' + admins.toString());
