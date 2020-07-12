@@ -1,5 +1,6 @@
 const botConfig = require('../bot.config');
 const settings = require('./settings');
+const chatsScheduler = require('./schedulers').chats;
 
 const HttpsProxyAgent = require('https-proxy-agent');
 const { DanmakuSourceManager } = require('./api');
@@ -14,6 +15,7 @@ const USER_STATE_CODE_CHAT_CHANGE_DANMAKU_SRC = 1;
 const USER_STATE_CODE_CHAT_CHANGE_PATTERN = 2;
 const USER_STATE_CODE_CHAT_CHANGE_ADMIN = 3;
 const USER_STATE_CODE_CHAT_CHANGE_BLOCK_USERS = 4;
+const USER_STATE_CODE_CHAT_MANAGE_SCHEDULES = 5;
 
 class DanmaquaBot extends BotWrapper {
     constructor({ dmSrc, botToken, agent, logger }) {
@@ -98,6 +100,7 @@ class DanmaquaBot extends BotWrapper {
             [/^confirm_unregister_chat:([-\d]+)/, this.onActionConfirmUnregisterChat],
             [/^reconnect_room:([a-zA-Z\d]+)_([-\d]+)/, this.onActionReconnectRoom],
             [/^block_user:([-\d]+):([-_a-zA-Z\d]+)/, this.onActionBlockUser],
+            [/^manage_schedules:([-\d]+)/, this.onActionManageSchedules],
         ]);
 
         this.bot.command('cancel', this.onCommandCancel);
@@ -167,6 +170,8 @@ class DanmaquaBot extends BotWrapper {
             this.onAnswerChangeAdmin(ctx, stateData);
         } else if (stateCode === USER_STATE_CODE_CHAT_CHANGE_BLOCK_USERS) {
             this.onAnswerChangeBlockedUsers(ctx, stateData);
+        } else if (stateCode === USER_STATE_CODE_CHAT_MANAGE_SCHEDULES) {
+            this.onAnswerManageSchedules(ctx, stateData);
         }
     };
 
@@ -375,7 +380,10 @@ class DanmaquaBot extends BotWrapper {
             ],
             [
                 Markup.callbackButton('屏蔽用户', 'change_blocked_users:' + chat.id),
-                Markup.callbackButton('重连房间', `reconnect_room:${dmSrc}_${roomId}`),
+                Markup.callbackButton('重连房间', `reconnect_room:${dmSrc}_${roomId}`)
+            ],
+            [
+                Markup.callbackButton('计划任务', 'manage_schedules:' + chat.id),
                 Markup.callbackButton('取消注册', 'unregister_chat:' + chat.id)
             ]
         ])));
@@ -473,6 +481,19 @@ class DanmaquaBot extends BotWrapper {
             });
     };
 
+    onActionManageSchedules = async (ctx) => {
+        const targetChatId = parseInt(ctx.match[1]);
+        const message = await ctx.reply(this.getManageSchedulesMessageText(targetChatId), Extra.markdown());
+
+        settings.setUserState(ctx.update.callback_query.from.id,
+            USER_STATE_CODE_CHAT_MANAGE_SCHEDULES,
+            {
+                targetChatId,
+                chatId: message.chat.id,
+                messageId: message.message_id
+            })
+    };
+
     getChangeBlockedUsersMessageText = (chatId) => {
         let blockedUsers = settings.getChatBlockedUsers(chatId)
             .map(({src, uid}) => src + '_' + uid);
@@ -487,6 +508,24 @@ class DanmaquaBot extends BotWrapper {
             '例如：输入 `add bilibili 100` 可以屏蔽 bilibili 弹幕源 id 为 100 的用户。\n\n' +
             '当前已被屏蔽的用户：\n`' + blockedUsers + '`\n' +
             '回复 /cancel 完成屏蔽修改并退出互动式对话。';
+    };
+
+    getManageSchedulesMessageText = (chatId) => {
+        let schedules = settings.getChatSchedules(chatId)
+            .map(({expression, action}) => '`' + expression + ' ' + action + '`');
+        if (schedules.length > 0) {
+            schedules = schedules.reduce((t, next) => t + '\n' + next);
+        } else {
+            schedules = '空';
+        }
+        return '你正在编辑 id=' + chatId + ' 的计划任务列表，' +
+            '计划任务的时间格式使用 crontab 格式，同一个 crontab 表达式只能设置一个任务，' +
+            '你可以相隔一秒设置不同的任务。任务命令可以参考：https://danmaqua.github.io/bot/scheduler\\_usage.html\n' +
+            '输入 `add [crontab 时间] [任务命令]` 可以添加计划任务\n' +
+            '输入 `del [crontab 时间]` 可以删除对应时间的任务。\n' +
+            '输入 `clear` 可以清除所有计划任务且不可恢复。\n' +
+            '当前已安排的任务计划：\n' + schedules + '\n' +
+            '回复 /cancel 完成修改并退出互动式对话。';
     };
 
     onAnswerChangeDanmakuSrc = async (ctx, chatId) => {
@@ -570,6 +609,71 @@ class DanmaquaBot extends BotWrapper {
         await this.bot.telegram.editMessageText(
             chatId, messageId, undefined,
             this.getChangeBlockedUsersMessageText(targetChatId),
+            {
+                chat_id: chatId,
+                message_id: messageId,
+                parse_mode: 'Markdown'
+            });
+    };
+
+    onAnswerManageSchedules = async (ctx, { targetChatId, chatId, messageId }) => {
+        const [operation, ...args] = ctx.message.text.split(' ');
+        if (operation !== 'add' && operation !== 'del' && operation !== 'clear') {
+            ctx.reply('不支持的计划任务管理操作，如果你要进行其他操作请回复 /cancel');
+            return;
+        }
+        const cronArgs = args.slice(0, 6);
+        const expression = cronArgs.length === 0 ? '' : cronArgs.reduce((a, b) => `${a} ${b}`);
+        if (operation === 'add') {
+            if (cronArgs.length !== 6 || !chatsScheduler.validateExpression(expression)) {
+                ctx.reply('这不是正确的 crontab 格式。', Extra.inReplyTo(ctx.message.message_id));
+                return;
+            }
+            const actions = args.slice(6);
+            if (actions.length <= 0) {
+                ctx.reply('请输入计划任务要执行的操作。', Extra.inReplyTo(ctx.message.message_id));
+                return;
+            }
+            const action = actions.reduce((a, b) => `${a} ${b}`);
+            if (!chatsScheduler.validateAction(action)) {
+                ctx.reply('这不是正确的操作，请检查语法是否正确。', Extra.inReplyTo(ctx.message.message_id));
+                return;
+            }
+            if (!settings.addChatSchedule(targetChatId, expression, action)) {
+                ctx.reply('添加计划任务失败，请检查是否有相同的 crontab 时间。',
+                    Extra.inReplyTo(ctx.message.message_id));
+                return;
+            }
+            chatsScheduler.addScheduler(targetChatId, expression, action);
+            ctx.reply('添加计划任务 `' + expression + '` 成功。',
+                Extra.markdown().inReplyTo(ctx.message.message_id));
+            this.user_access_log(ctx.message.from.id,
+                `Add schedule: chatId=${chatId} expression=${expression} action=${action}`);
+        } else if (operation === 'del') {
+            if (cronArgs.length !== 6 || !chatsScheduler.validateExpression(expression)) {
+                ctx.reply('这不是正确的 crontab 格式。', Extra.inReplyTo(ctx.message.message_id));
+                return;
+            }
+            if (!settings.removeChatSchedule(targetChatId, expression)) {
+                ctx.reply('移除计划任务失败，请检查是否已添加这个 crontab 时间',
+                    Extra.inReplyTo(ctx.message.message_id));
+                return;
+            }
+            chatsScheduler.removeScheduler(targetChatId, expression);
+            ctx.reply('移除计划任务 `' + expression + '` 成功。',
+                Extra.markdown().inReplyTo(ctx.message.message_id));
+            this.user_access_log(ctx.message.from.id,
+                `Remove schedule: chatId=${chatId} expression=${expression}`);
+        } else if (operation === 'clear') {
+            chatsScheduler.clearSchedulersForChat(targetChatId);
+            settings.setChatSchedules(targetChatId, []);
+            ctx.reply('已清除所有计划任务。', Extra.inReplyTo(ctx.message.message_id));
+            this.user_access_log(ctx.message.from.id,
+                `Clear schedules: chatId=${chatId}`);
+        }
+        await this.bot.telegram.editMessageText(
+            chatId, messageId, undefined,
+            this.getManageSchedulesMessageText(targetChatId),
             {
                 chat_id: chatId,
                 message_id: messageId,
@@ -701,7 +805,12 @@ class Application {
             dmSrc: this.dmSrc,
             botToken: botConfig.botToken,
             agent: this.agent,
-            logger: this.logger
+            logger: this.logger,
+        });
+        chatsScheduler.init({
+            bot: this.bot,
+            settings: settings,
+            logger: this.logger,
         });
         this.dmSrc.on('danmaku', (danmaku) => {
             try {

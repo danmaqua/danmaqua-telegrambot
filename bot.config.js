@@ -20,6 +20,13 @@ module.exports = {
             description: '斗鱼直播弹幕',
             type: 'common-danmaku-ws',
             value: 'localhost:8002'
+        },
+        {
+            id: 'local',
+            description: '本地测试弹幕服务器',
+            type: 'common-danmaku-ws',
+            value: 'localhost:8003',
+            enabled: false
         }
     ]
 };

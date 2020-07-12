@@ -32,7 +32,7 @@ class Settings {
         this.botToken = botConfig.botToken;
         this.botProxy = botConfig.botProxy;
         this.botAdmins = botConfig.botAdmins;
-        this.danmakuSources = botConfig.danmakuSources;
+        this.danmakuSources = botConfig.danmakuSources.filter(src => src.enabled !== false);
         if (!fs.existsSync(this.dataDir)) {
             fs.mkdirSync(path.resolve(this.dataDir));
         }
@@ -176,7 +176,9 @@ class Settings {
         const index = c.blockedUsers.indexOf(userId);
         if (index < 0) {
             c.blockedUsers.push(userId);
+            return true;
         }
+        return false;
     }
 
     removeChatBlockedUsers(chatId, userId) {
@@ -191,7 +193,9 @@ class Settings {
         const index = c.blockedUsers.indexOf(userId);
         if (index >= 0) {
             c.blockedUsers.splice(userId, 1);
+            return true;
         }
+        return false;
     }
 
     containsChatBlockedUser(chatId, userId, source) {
@@ -210,10 +214,55 @@ class Settings {
     }
 
     getChatBlockedUsers(chatId) {
-        return this.getChatConfig(chatId).blockedUsers.map((value) => {
+        const blockedUsers = this.getChatConfig(chatId).blockedUsers || [];
+        return blockedUsers.map((value) => {
             const [dmSrc, userId] = value.split('_');
             return { src: dmSrc, uid: userId };
         });
+    }
+
+    setChatSchedules(chatId, schedules) {
+        const c = this._ensureChatConfig(chatId);
+        c.schedules = schedules || [];
+    }
+
+    addChatSchedule(chatId, expression, action) {
+        const c = this._ensureChatConfig(chatId);
+        if (!c.schedules) {
+            c.schedules = [];
+        }
+        const index = c.schedules.findIndex(s => s.expression === expression);
+        if (index < 0) {
+            c.schedules.push({ expression, action });
+            return true;
+        }
+        return false;
+    }
+
+    removeChatSchedule(chatId, expression) {
+        const c = this._ensureChatConfig(chatId);
+        if (!c.schedules) {
+            c.schedules = [];
+        }
+        const index = c.schedules.findIndex(s => s.expression === expression);
+        if (index >= 0) {
+            c.schedules.splice(index, 1);
+            return true;
+        }
+        return false;
+    }
+
+    containsChatSchedule(chatId, expression) {
+        const c = this._ensureChatConfig(chatId);
+        if (!c.schedules) {
+            c.schedules = [];
+        }
+        return c.schedules.findIndex(s => s.expression === expression) >= 0;
+    }
+
+    getChatSchedules(chatId) {
+        const c = this._ensureChatConfig(chatId);
+        return c.schedules || [];
     }
 
     deleteChatConfig(chatId) {

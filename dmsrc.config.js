@@ -37,5 +37,10 @@ module.exports = {
          */
         reconnectCron: '0 0 3 * * *',
         logsDir: './data/logs/douyu-dm'
+    },
+    local: {
+        port: 8003,
+        basicAuth: null,
+        logsDir: './data/logs/local-dm'
     }
 };

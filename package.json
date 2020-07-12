@@ -1,11 +1,12 @@
 {
   "name": "danmaqua-tgbot",
-  "version": "1.0.0",
+  "version": "2.1.0-beta01",
   "description": "Danmaqua Telegram Bot",
   "scripts": {
     "bot": "node bot/app.js",
     "dmsrc:bilibili": "node dmsrc/bilibili/index.js",
     "dmsrc:douyu": "node dmsrc/douyu/index.js",
+    "dmsrc:local": "node dmsrc/local-src/index.js",
     "transfer:from_v1": "node bot/transfer-helper.js"
   },
   "keywords": [],
