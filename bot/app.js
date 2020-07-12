@@ -553,10 +553,10 @@ class DanmaquaBot extends BotWrapper {
             schedules = '空';
         }
         return '你正在编辑 id=' + chatId + ' 的计划任务列表，' +
-            '计划任务的时间格式使用 crontab 格式，同一个 crontab 表达式只能设置一个任务，' +
+            '计划任务的时间格式使用 cron 时间表达式，同一个 cron 时间表达式只能设置一个任务，' +
             '你可以相隔一秒设置不同的任务。任务命令可以参考：https://danmaqua.github.io/bot/scheduler\\_usage.html\n' +
-            '输入 `add [crontab 时间] [任务命令]` 可以添加计划任务\n' +
-            '输入 `del [crontab 时间]` 可以删除对应时间的任务。\n' +
+            '输入 `add [cron 时间表达式] [任务命令]` 可以添加计划任务\n' +
+            '输入 `del [cron 时间表达式]` 可以删除对应时间的任务。\n' +
             '输入 `clear` 可以清除所有计划任务且不可恢复。\n' +
             '当前已安排的任务计划：\n' + schedules + '\n' +
             '回复 /cancel 完成修改并退出互动式对话。';
@@ -660,7 +660,7 @@ class DanmaquaBot extends BotWrapper {
         const expression = cronArgs.length === 0 ? '' : cronArgs.reduce((a, b) => `${a} ${b}`);
         if (operation === 'add') {
             if (cronArgs.length !== 6 || !chatsScheduler.validateExpression(expression)) {
-                ctx.reply('这不是正确的 crontab 格式。', Extra.inReplyTo(ctx.message.message_id));
+                ctx.reply('这不是正确的 cron 时间表达式。', Extra.inReplyTo(ctx.message.message_id));
                 return;
             }
             const actions = args.slice(6);
@@ -674,7 +674,7 @@ class DanmaquaBot extends BotWrapper {
                 return;
             }
             if (!settings.addChatSchedule(targetChatId, expression, action)) {
-                ctx.reply('添加计划任务失败，请检查是否有相同的 crontab 时间。',
+                ctx.reply('添加计划任务失败，请检查是否有相同的 cron 时间表达式。',
                     Extra.inReplyTo(ctx.message.message_id));
                 return;
             }
@@ -685,11 +685,11 @@ class DanmaquaBot extends BotWrapper {
                 `Add schedule: chatId=${chatId} expression=${expression} action=${action}`);
         } else if (operation === 'del') {
             if (cronArgs.length !== 6 || !chatsScheduler.validateExpression(expression)) {
-                ctx.reply('这不是正确的 crontab 格式。', Extra.inReplyTo(ctx.message.message_id));
+                ctx.reply('这不是正确的 cron 时间表达式。', Extra.inReplyTo(ctx.message.message_id));
                 return;
             }
             if (!settings.removeChatSchedule(targetChatId, expression)) {
-                ctx.reply('移除计划任务失败，请检查是否已添加这个 crontab 时间',
+                ctx.reply('移除计划任务失败，请检查是否已添加这个 cron 时间表达式',
                     Extra.inReplyTo(ctx.message.message_id));
                 return;
             }
