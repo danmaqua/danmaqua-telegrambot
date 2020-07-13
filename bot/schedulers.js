@@ -5,13 +5,9 @@ class ChatsScheduler {
     static OP_SEND_TEXT = 'send_text';
     static OP_SEND_HTML = 'send_html';
 
-    constructor() {
+    constructor({ bot, settings, logger }) {
         this.chatSchedulers = {};
         this.timezone = 'Asia/Shanghai';
-        this.bot = null;
-    }
-
-    init({ bot, settings, logger }) {
         this.bot = bot;
         this.settings = settings;
         this.logger = logger;
@@ -124,5 +120,5 @@ class ChatsScheduler {
 }
 
 module.exports = {
-    chats: new ChatsScheduler(),
+    ChatsScheduler,
 };
