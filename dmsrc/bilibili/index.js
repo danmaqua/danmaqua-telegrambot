@@ -14,7 +14,7 @@ class BilibiliDanmakuSource extends BaseDanmakuWebSocketSource {
         super(config);
         this.liveList = {};
         this.bilibiliProtocol = config.bilibiliProtocol;
-        if (this.bilibiliProtocol !== 'ws' || this.bilibiliProtocol !== 'tcp') {
+        if (this.bilibiliProtocol !== 'ws' && this.bilibiliProtocol !== 'tcp') {
             this.logger.info('Bilibili Danmaku Source configuration didn\'t specify protocol type. Set to ws as default.');
             this.bilibiliProtocol = 'ws';
         }
