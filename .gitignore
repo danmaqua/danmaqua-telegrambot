@@ -2,6 +2,7 @@
 /.vscode
 /node_modules
 /data
+/test/others
 *.iml
 config.js
 bot.config.js
