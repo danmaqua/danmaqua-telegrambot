@@ -7,7 +7,7 @@
     "dmsrc:bilibili": "node dmsrc/bilibili/index.js",
     "dmsrc:douyu": "node dmsrc/douyu/index.js",
     "dmsrc:local": "node dmsrc/local-src/index.js",
-    "transfer:from_v1": "node bot/transfer-helper.js"
+    "transfer:from_v1": "node bot/util/transfer-helper.js"
   },
   "keywords": [],
   "author": "fython",
@@ -17,6 +17,7 @@
   },
   "license": "GPL-3.0-only",
   "dependencies": {
+    "async-ratelimiter": "^1.2.8",
     "bilibili-live-ws": "^5.0.0",
     "douyudm": "^1.3.2-beta.2",
     "https-proxy-agent": "^5.0.0",

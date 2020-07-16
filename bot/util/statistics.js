@@ -12,6 +12,8 @@ class DanmakuStatistics {
         this.logger = logger;
         this.selectDBIndex = botConfig.statistics.selectDB;
 
+        logger.default.info('DanmakuStatistics: DanmakuStatistics is enabled. Redis server: ' + redisServer);
+
         this._selectDanmaquaDB().catch((e) => {
             this.logger.default.error(e);
         });

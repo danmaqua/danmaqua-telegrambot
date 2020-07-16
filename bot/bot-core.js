@@ -1,4 +1,4 @@
-const settings = require('./settings');
+const settings = require('./util/settings');
 const BotWrapper = require('./bot-wrapper');
 const Extra = require('telegraf/extra');
 const Markup = require('telegraf/markup');
@@ -11,13 +11,14 @@ const USER_STATE_CODE_CHAT_CHANGE_BLOCK_USERS = 4;
 const USER_STATE_CODE_CHAT_MANAGE_SCHEDULES = 5;
 
 class DanmaquaBot extends BotWrapper {
-    constructor({ botConfig, dmSrc, botToken, agent, logger, chatsScheduler, statistics }) {
+    constructor({ botConfig, dmSrc, botToken, agent, logger, chatsScheduler, statistics, rateLimiter }) {
         super({ botConfig, botToken, agent, logger });
         this.settings = settings;
         this.startCommandSimpleMessage = '欢迎使用 Danmaqua Bot！';
         this.dmSrc = dmSrc;
         this.chatsScheduler = chatsScheduler;
         this.statistics = statistics;
+        this.rateLimiter = rateLimiter;
 
         this.addCommands([
             {
@@ -133,8 +134,16 @@ class DanmaquaBot extends BotWrapper {
             msg += `<a href="${url}">${data.sender.username}</a>：`;
         }
         msg += data.text;
+        if (this.rateLimiter.enabled) {
+            const res = await this.rateLimiter.get(chatId);
+            if (!res.available) {
+                this.logger.default.debug('Sending messages rate limit exceeded.');
+                // TODO 超过频率限制采取不同的行为
+            }
+        }
         const extras = Extra.HTML().webPreview(false).notifications(false);
-        return await this.bot.telegram.sendMessage(chatId, msg, extras);
+        const sent = await this.bot.telegram.sendMessage(chatId, msg, extras);
+        return sent;
     };
 
     notifyActionDone = (chatId, action) => {

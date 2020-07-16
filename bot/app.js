@@ -1,7 +1,8 @@
 const botConfig = require('../bot.config');
-const settings = require('./settings');
-const { ChatsScheduler } = require('./schedulers');
-const { DanmakuStatistics } = require('./statistics');
+const settings = require('./util/settings');
+const RateLimiter = require('./util/rate-limiter');
+const { ChatsScheduler } = require('./util/schedulers');
+const { DanmakuStatistics } = require('./util/statistics');
 
 const HttpsProxyAgent = require('https-proxy-agent');
 const { DanmakuSourceManager } = require('./api');
@@ -66,6 +67,8 @@ class Application {
             }),
             // 初始化统计器
             statistics: new DanmakuStatistics(botConfig, this.logger),
+            // 初始化限流器
+            rateLimiter: new RateLimiter(botConfig, this.logger),
         });
         // 设置弹幕源事件回调
         this.dmSrc.on('danmaku', (danmaku) => {

@@ -1,4 +1,4 @@
-const settings = require('./settings');
+const settings = require('./util/settings');
 const Telegraf = require('telegraf');
 const Extra = require('telegraf/extra');
 

@@ -1,5 +1,5 @@
 const fs = require('fs');
-const botConfig = require('../bot.config');
+const botConfig = require('../../bot.config');
 const settingsV2 = require('./settings');
 
 function transferDataFromV1() {

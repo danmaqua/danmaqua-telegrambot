@@ -1,7 +1,7 @@
 const EventEmitter = require('events');
 const { MSG_JOIN_ROOM, MSG_LEAVE_ROOM, MSG_RECONNECT_ROOM } = require('../dmsrc/common');
 const ioClient = require('socket.io-client');
-const settings = require('./settings');
+const settings = require('./util/settings');
 
 class DanmakuWebSocketSource {
     constructor({id, type, socket}) {

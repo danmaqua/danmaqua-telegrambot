@@ -1,5 +1,5 @@
 const botConfig = require('../../bot.config');
-const settings = require('../../bot/settings');
+const settings = require('../../bot/util/settings');
 settings.init(botConfig, false);
 const api = require('../../bot/api');
 
