@@ -54,7 +54,6 @@ class RateLimiter {
     async get(chatId) {
         const globalRes = await this.getForGlobal();
         const chatRes = await this.getForChatOnly(chatId);
-        console.log(globalRes, chatRes);
         const reset = Math.max(globalRes.reset, chatRes.reset);
         if (globalRes.remaining <= 0 || chatRes.remaining <= 0) {
             return {
