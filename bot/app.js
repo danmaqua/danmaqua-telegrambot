@@ -59,6 +59,7 @@ class Application {
             botToken: botConfig.botToken,
             agent: this.agent,
             logger: this.logger,
+            debugMode: botConfig.debugMode || false,
             // 初始化计划任务管理器
             chatsScheduler: new ChatsScheduler({
                 bot: this.bot,
@@ -73,6 +74,9 @@ class Application {
         // 设置弹幕源事件回调
         this.dmSrc.on('danmaku', (danmaku) => {
             try {
+                if (botConfig.debugMode) {
+                    this.logger.default.debug('onReceiveDanmaku: ', danmaku);
+                }
                 this.onReceiveDanmaku(danmaku);
             } catch (e) {
                 this.logger.default.error(e);

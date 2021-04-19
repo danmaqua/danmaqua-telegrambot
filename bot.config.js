@@ -5,6 +5,7 @@ module.exports = {
     botToken: '',
     botProxy: null,
     botAdmins: [],
+    debugMode: false,
     rateLimit: {
         enabled: false,
         redisServer: '127.0.0.1:6379',
