@@ -25,7 +25,7 @@ Danmaqua Telegram Bot
 
 订阅 Telegram 频道 [@danmaqua](https://t.me/danmaqua) 获取最新同传弹幕记录频道。
 
-同传弹幕频道列表网页版（更新不如 Telegram 及时，但便于阅读）：<https://danmaqua.github.io/bot/>
+同传弹幕频道列表网页版（更新不如 Telegram 及时，但便于阅读）：<https://danmaqua.github.io/bot/userpage.html>
 
 如果你有自己搭建的弹幕记录频道，也欢迎提交到这里。
 
