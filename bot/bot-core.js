@@ -296,7 +296,7 @@ class DanmaquaBot extends BotWrapper {
     onCommandRegisterChat = async (ctx) => {
         let [_, chatId, roomId, source] = ctx.message.text.split(' ');
         if (!chatId) {
-            ctx.reply('注册命令使用方法：/register_chat `chatId` `roomId` `\\[source]`', Extra.markdown());
+            ctx.reply('注册命令使用方法：/register\_chat `chatId` `roomId` `\\[source]`', Extra.markdown());
             return;
         }
         if (!roomId) {
@@ -314,7 +314,7 @@ class DanmaquaBot extends BotWrapper {
         const targetChat = await this.getChat(chatId);
         const canSend = targetChat != null && await this.canSendMessageToChat(targetChat.id);
         if (!canSend) {
-            ctx.reply('Bot 不被允许发送消息到对话 id=' + targetChat.id);
+            ctx.reply('Bot 不被允许发送消息到对话 ' + (targetChat ? ('id=' + targetChat.id) : chatId));
             return;
         }
         chatId = targetChat.id;
@@ -346,7 +346,7 @@ class DanmaquaBot extends BotWrapper {
     onCommandUnregisterChat = async (ctx) => {
         let [_, chatId] = ctx.message.text.split(' ');
         if (!chatId) {
-            ctx.reply('取消注册命令使用方法：/unregister_chat `chatId`', Extra.markdown());
+            ctx.reply('取消注册命令使用方法：/unregister\_chat `chatId`', Extra.markdown());
             return;
         }
         const targetChat = await this.getChat(chatId || ctx.chat.id);
@@ -765,7 +765,7 @@ class DanmaquaBot extends BotWrapper {
     onCommandManageChat = async (ctx) => {
         let [_, chatId] = ctx.message.text.split(' ');
         if (!chatId) {
-            ctx.reply('管理频道命令使用方法：/manage_chat `chatId`', Extra.markdown());
+            ctx.reply('管理频道命令使用方法：/manage\_chat `chatId`', Extra.markdown());
             return;
         }
         const targetChat = await this.getChat(chatId || ctx.chat.id);
